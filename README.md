@@ -1,10 +1,10 @@
-# MIDI2 C++
+# MIDI2.0 C++
 A MIDI 2.0 Library for Embedded/Arduino Devices
 
 ## IMPORTANT! Please read first
 THIS LIBRARY IS UNDER DEVELOPMENT - Code here today, is likely gone tomorrow!
 
-I AM NOT A PROFESIONAL C++ DEVLOPER. If you see code here that :
+I AM NOT A PROFESIONAL C++ DEVELOPER. If you see code here that :
 * could be styled/structured better
 * could be written better
 * could use less resources
