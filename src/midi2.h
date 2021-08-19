@@ -1225,7 +1225,7 @@ class midi2Processor{
 		sendOutSysex(group,profile,5,3);
 	}
 	
-	void sendProfileEanbled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t* profile){
+	void sendProfileEnabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t* profile){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[13];
 		addCIHeader(0x24,sysex);
