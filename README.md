@@ -10,6 +10,7 @@ I AM NOT A PROFESIONAL C++ DEVELOPER. If you see code here that :
 * could use less resources
 * has memory leaks, bugs, 
 * is fundamentally flawed
+* has spelling mistakes and gramtical errors
 
 Then please submit PR's and/or issues - but PR's preferred. 
 
@@ -19,18 +20,18 @@ Given this - please use this library at your own risk! Long term I hope that thi
 Please read the MIDI 2.0 specification on https://midi.org/specifications to understand the following.
 
 This library can:
-* Convert MIDI 1.0 Bystream to UMP
+* Convert MIDI 1.0 Byte stream to UMP
 * Process and send UMP Streams
 * Process and Send MIDI-CI Messages
 * Build UMP 32 bit Words to send
 
 This library is designed to use a small footprint. This means it is upto the appliction to:
  * Store Remote MIDI-CI Device details
- * Upon recieving MIDI-CI Message to interpret the Messages data structure (e.g. Profile Id bytes, Note On Articulation etc.)
- * Handle logic and NAK sending and recieving.
+ * Upon receiving MIDI-CI Message to interpret the Messages data structure (e.g. Profile Id bytes, Note On Articulation etc.)
+ * Handle logic and NAK sending and receiving.
  * Large data is handled in small chunks to keep memory small.
 
-This means the overheads for a simple MIDI 2.0 device is down to compile size around 10k with a memory footprint of around 1k.
+This means the overheads for a simple MIDI 2.0 device is down to a compiled size of around 10k (possibly less?), with a memory footprint of around 1k.
 
 ### TODO
 * Protocol Negotiation
@@ -43,7 +44,7 @@ This means the overheads for a simple MIDI 2.0 device is down to compile size ar
 * Handling of Per Note Controllers
 * Universal SysEx handling (Other than Device ID and MIDI-CI)
 
-### Example Convert MIDI 1.0 Bystream to UMP
+### Example Convert MIDI 1.0 Byte stream to UMP
 
 Here is a quick Arduino example
 
@@ -57,7 +58,7 @@ void setup()
   Serial.begin(31250);
   
   //Produce MIDI 2.0 Channel Voice Message (Message Type 0x4)
-  //If not set it will return MIDI 1.0 Channel Voice Messages (Message Type 0x2)
+  //Default (false) will return MIDI 1.0 Channel Voice Messages (Message Type 0x2)
   BS2UMP.outputMIDI2 = true; 
   
   //Set the UMP group of the output UMP message. By default this is set to Group 1
@@ -207,11 +208,11 @@ void loop()
 
 ---
 ## midiBsToUMP
-Class used for transalting between a raw MIDI 1.0 Byte stream and UMP
+Class used for translating between a raw MIDI 1.0 Byte stream and UMP
 
 ### Common methods
 #### void midi1BytestreamParse(uint8_t midi1Byte)
-Process incoming MIDI 1.0 Byte Stream
+Process incoming MIDI 1.0 Byte stream
 
 #### bool availableUMP()
 Check if there are available UMP packets after processing the Byte Stream
@@ -286,7 +287,7 @@ After triggering off a ```sendDiscoveryRequest``` replies will be sent here.
 ---
 ## midi2Processor M2_ENABLE_IDREQ Methods
 These are available if ```#define M2_ENABLE_IDREQ``` is set. 
-If a Device ID Request is recieved the class will automatically send a reply based on the DeviceId, Model, Famil and Version information provided.
+If a Device ID Request is received the class will automatically send a reply based on the DeviceId, Model, Famil and Version information provided.
 
 ### void sendIdentityRequest (uint8_t group)
 Send out a Universal SysEx Device ID Request
@@ -308,8 +309,10 @@ Send a Profile List Response Message.
 ```profilesEnabledLen``` and ```profilesDisabledLen``` represent how many Profiles. ```profilesEnabled``` and ```profilesDisabled``` arguments should be 5 times the length of ```profilesEnabledLen``` and ```profilesDisabledLen``` respectively.
 
 ### void sendProfileOn(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t\* profile)
+```profile``` is alway 5 bytes.
+
 ### void sendProfileOff(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t\* profile)
-### void sendProfileEanbled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t\* profile)
+### void sendProfileEnabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t\* profile)
 ### void sendProfileDisabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t\* profile)
 
 ### inline void setRecvProfileInquiry(void (\*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination))
@@ -326,6 +329,7 @@ Send a Profile List Response Message.
 This enable processing of MIDI-CI Property Exchange. These methods are available if ```#define M2_ENABLE_PE``` is set.
 
 Property Exchange requires a bit more memory than other parts of MIDI-CI. Enabling this will increase memory requirements.
+
 ### void sendPECapabilityRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t numRequests)
 ### void sendPEGet(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t requestId, uint16_t headerLen, uint8_t* header)
 ### void sendPEGetReply(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t requestId, uint16_t headerLen, uint8_t\* header, int numberOfChunks, int numberOfThisChunk, uint16_t bodyLength , uint8_t\* body)
