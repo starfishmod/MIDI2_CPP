@@ -22,112 +22,35 @@
 #endif
 
 #include "utils.h"
+#include "midi2.h"
 #include "messageCreate.h"
 #include "bytestreamUMP.h"
 
 
 
-class midi2Processor{
-  private:
-  
-	uint32_t umpMess[4];
-	uint8_t messPos=0;
-	
-	
-	uint8_t groupStart;
-	uint8_t groups;
-	
-	uint32_t syExMess[2]={0,0};
-    uint16_t syExMessPos=0;
-    
-    
-    //SysEx7Based Data
-    bool *sysex7State;   
-    uint16_t *sysexPos;
-    uint8_t *sysexMode; 
-    uint8_t *sysUniNRTMode;
-    uint8_t *sysUniPort;
-    uint8_t **sys7CharBuffer;
-    uint16_t **sys7IntBuffer;
-    
-    uint8_t *ciType;
-    uint8_t *ciVer;
-    uint32_t *remoteMuid;
-    uint32_t *destMuid;
-    
-    #ifdef M2_ENABLE_PE
-	peHeader *peRquestDetails;
-    uint8_t numRequests;
-    void * _pvoid;
-	#endif
-    
-    
-    void (*midiNoteOff)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData) = 0;
-    void (*midiNoteOn)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData) = 0;
-    void (*controlChange)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value) = 0;
-    void (*rpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, uint32_t value) = 0;
-    void (*polyPressure)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure) = 0;
-    void (*channelPressure)(uint8_t group, uint8_t channel, uint32_t pressure) = 0;
-    void (*pitchBend)(uint8_t group, uint8_t channel, uint32_t value) = 0;
-    void (*programChange)(uint8_t group, uint8_t channel, uint8_t program, bool bankValid, uint8_t bank, uint8_t index) = 0;
-    void (*sendOutSysex)(uint8_t group, uint8_t *sysex ,uint16_t length, uint8_t state) = 0;
-    void (*timingCode)(uint8_t group, uint8_t timeCode) = 0;
-    void (*songSelect)(uint8_t group, uint8_t song) = 0;
-    void (*songPositionPointer)(uint8_t group, uint16_t position) = 0;
-    void (*tuneRequest)(uint8_t group) = 0;
-    void (*timingClock)(uint8_t group) = 0;
-    void (*seqStart)(uint8_t group) = 0;
-    void (*seqCont)(uint8_t group) = 0;
-    void (*seqStop)(uint8_t group) = 0;
-    void (*activeSense)(uint8_t group) = 0;
-    void (*systemReset)(uint8_t group) = 0;
-    
-    
-    void (*recvDiscoveryRequest)(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, int maxSysex) = 0;
-    void (*recvDiscoveryReply)(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, int maxSysex) = 0;
-    void (*recvNAK)(uint8_t group, uint32_t remoteMuid) = 0;
-    void (*recvInvalidateMUID)(uint8_t group, uint32_t remoteMuid, uint32_t terminateMuid) = 0;
-    
-    #ifdef M2_ENABLE_JR
-    void (*jrClock)(uint8_t group, uint16_t timing) = 0;
-    #endif
-    
-    #ifdef M2_ENABLE_PROFILE
-    void (*recvProfileInquiry)(uint8_t group, uint32_t remoteMuid, uint8_t destination) = 0;
-    void (*recvSetProfileEnabled)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
-    void (*recvSetProfileDisabled)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
-    void (*recvSetProfileOn)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
-    void (*recvSetProfileOff)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
-    #endif
-    
-    #ifdef M2_ENABLE_PE
-    void (*recvPECapabilities)(uint8_t group, uint32_t remoteMuid, uint8_t numRequests) = 0;
-    void (*recvPEGetInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails) = 0;
-    void (*recvPESetInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails, uint8_t bodyLen, uint8_t*  body) = 0;
-    
-    
-    uint8_t getPERequestId(uint8_t groupOffset, uint8_t newByte){
+#ifdef M2_ENABLE_PE
+    uint8_t midi2Processor::getPERequestId(uint8_t groupOffset, uint8_t newByte){
 		uint8_t reqPosUsed = 255;
 		if(sysexPos[groupOffset] == 13){ //Request Id
-			Serial.println("  Set ReqId ");
+			//Serial.println("  Set ReqId ");
 			for(uint8_t i =0;i<numRequests;i++){
-				Serial.print("  - i ");Serial.println( i);
+				//Serial.print("  - i ");Serial.println( i);
 				if(peRquestDetails[i].requestId == newByte){
-					Serial.print("  - Found old pos ");Serial.println( i);
+					//Serial.print("  - Found old pos ");Serial.println( i);
 					reqPosUsed = i;
 					break;
 				}else if(reqPosUsed==255 && peRquestDetails[i].requestId == 255){
-					Serial.print("  - Found unsed Pos ");Serial.println( i);
+					//Serial.print("  - Found unsed Pos ");Serial.println( i);
 					peRquestDetails[i].requestId = newByte;
 					reqPosUsed = i;
 					break;
 				}else {
-					Serial.print("  - exisiting ReqId ");Serial.println(peRquestDetails[i].requestId);
+					//Serial.print("  - exisiting ReqId ");Serial.println(peRquestDetails[i].requestId);
 				}
 			}
 			sys7IntBuffer[groupOffset][0] = (int)reqPosUsed;
 			if(reqPosUsed == 255){
-				Serial.println("  - Could not set ReqId");
+				//Serial.println("  - Could not set ReqId");
 				//return NAK
 			}
 		}else {
@@ -136,8 +59,8 @@ class midi2Processor{
 		}
 		return reqPosUsed;
 	}
-	
-	void processPERequestHeader(uint8_t groupOffset, uint8_t reqPosUsed, uint8_t newByte){
+
+	void midi2Processor::processPERequestHeader(uint8_t groupOffset, uint8_t reqPosUsed, uint8_t newByte){
 		int clear=0;
 
 		if((sys7IntBuffer[groupOffset][2] & 0xF) == PE_HEAD_STATE_IN_STRING){
@@ -198,16 +121,10 @@ class midi2Processor{
 		}
 		
 	}
-    #endif
+#endif
     
     
-    #ifdef M2_ENABLE_IDREQ
-    void (*sendOutIdResponse)(uint8_t* devId, uint8_t* famId, uint8_t* modelId, uint8_t* ver) = 0;
-    #endif
-    
-    
-    
-    void addCIHeader(uint8_t ciType, uint8_t* sysexHeader){
+    void midi2Processor::addCIHeader(uint8_t ciType, uint8_t* sysexHeader){
 
 		sysexHeader[0]=0x7E;
 		sysexHeader[1]=0x7F;
@@ -218,12 +135,12 @@ class midi2Processor{
 	}
 
     
-    void endSysex7(uint8_t groupOffset){
+    void midi2Processor::endSysex7(uint8_t groupOffset){
       sysex7State[groupOffset] = false;
       sysexPos[groupOffset] = 0;
     };
     
-    void startSysex7(uint8_t groupOffset){
+    void midi2Processor::startSysex7(uint8_t groupOffset){
       //Reset ALL SYSEX etc
       sysex7State[groupOffset] = true;
       sysexPos[groupOffset] = 0;
@@ -236,7 +153,7 @@ class midi2Processor{
       ciVer[groupOffset] = 0;
     };
     
-    void processSysEx(uint8_t groupOffset, uint8_t newByte){
+    void midi2Processor::processSysEx(uint8_t groupOffset, uint8_t newByte){
 		//Serial.print(sysexPos[groupOffset]);Serial.print(" - ");Serial.println(newByte);
 		
       if(sysexPos[groupOffset] == 0){
@@ -258,7 +175,7 @@ class midi2Processor{
     
     
     //Proces all Non-Realtime Universal SysEx incl. MIDI-CI
-    void processUniS7NRT(uint8_t groupOffset, uint8_t newByte){
+    void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t newByte){
 		//Serial.print("  - processUniS7NRT:");Serial.println(sysUniNRTMode[groupOffset],HEX);
       if(sysexPos[groupOffset] == 1){
          sysUniPort[groupOffset] =  newByte;
@@ -815,23 +732,8 @@ class midi2Processor{
       }
     }
     
-  
-  
-    
-  public:
-  
-	//This Device's Data
-	uint32_t groupBlockMUID = 0; 
-	uint8_t devId[3];
-    uint8_t famId[2];
-    uint8_t modelId[2];
-    uint8_t ver[4]; 
-    
-    uint16_t sysExMax = 512;
-    
-    
-  
-    midi2Processor(uint8_t grStart, uint8_t totalGroups
+
+    midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups
 		#ifdef M2_ENABLE_PE
 		, uint8_t numRequestsTotal
 		#endif
@@ -840,14 +742,14 @@ class midi2Processor{
 		groupStart = grStart;
 		groups = totalGroups;
 		
-		sysexPos = malloc(sizeof(int) * groups); 
-		sysexMode = malloc(sizeof(uint8_t) * groups); 
-		sysUniNRTMode = malloc(sizeof(uint8_t) * groups); 
-		sysUniPort = malloc(sizeof(uint8_t) * groups); 
-		ciType = malloc(sizeof(uint8_t) * groups); 
-		ciVer = malloc(sizeof(uint8_t) * groups); 
-		remoteMuid = malloc(sizeof(uint32_t) *  groups); 
-		destMuid = malloc(sizeof(uint32_t) *  groups); 
+		sysexPos = (uint16_t*)malloc(sizeof(int) * groups); 
+		sysexMode = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
+		sysUniNRTMode = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
+		sysUniPort = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
+		ciType = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
+		ciVer = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
+		remoteMuid = (uint32_t*)malloc(sizeof(uint32_t) *  groups); 
+		destMuid = (uint32_t*)malloc(sizeof(uint32_t) *  groups); 
 		
 		#ifdef M2_ENABLE_PE
 		numRequests = numRequestsTotal;
@@ -889,7 +791,7 @@ class midi2Processor{
   
 	};
 	
-	~midi2Processor() { 
+	midi2Processor::~midi2Processor() { 
 		free(sysexPos); sysexPos = NULL; 
 		free(sysexMode); sysexMode = NULL; 
 		free(sysUniNRTMode); sysUniNRTMode = NULL; 
@@ -907,7 +809,7 @@ class midi2Processor{
 	} 
 	
 	
-    void processUMP(uint32_t UMP){
+    void midi2Processor::processUMP(uint32_t UMP){
 		umpMess[messPos] = UMP;
 		//Serial.print(" UMP Proc: ");Serial.print(messPos);Serial.print("  ");Serial.println(umpMess[messPos]);
 
@@ -1133,14 +1035,14 @@ class midi2Processor{
     
     
     #ifdef M2_ENABLE_IDREQ
-    void sendIdentityRequest (uint8_t group){
+    void midi2Processor::sendIdentityRequest (uint8_t group){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[]={0x7E,0x7F,0x06,0x01};
 		sendOutSysex(group,sysex,4,0);
 	}
     #endif
     
-    void sendDiscoveryRequest(uint8_t group, uint8_t ciVer){
+    void midi2Processor::sendDiscoveryRequest(uint8_t group, uint8_t ciVer){
 		if(sendOutSysex ==0) return;
 		
 		uint8_t sysex[13];
@@ -1169,7 +1071,7 @@ class midi2Processor{
 		sendOutSysex(group,sysex,4,3);
 	}
 	
-	void sendNAK(uint8_t group, uint32_t remoteMuid, uint8_t ciVer){
+	void midi2Processor::sendNAK(uint8_t group, uint32_t remoteMuid, uint8_t ciVer){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[13];
 		addCIHeader(0x7F,sysex);
@@ -1178,7 +1080,7 @@ class midi2Processor{
 	}
 	
 	#ifdef M2_ENABLE_PROFILE
-	void sendProfileListRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination){
+	void midi2Processor::sendProfileListRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[13];
 		addCIHeader(0x20,sysex);
@@ -1188,7 +1090,7 @@ class midi2Processor{
 	}
 	
 	
-	void sendProfileListResponse(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t profilesEnabledLen, uint8_t* profilesEnabled, uint8_t profilesDisabledLen , uint8_t* profilesDisabled ){
+	void midi2Processor::sendProfileListResponse(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t profilesEnabledLen, uint8_t* profilesEnabled, uint8_t profilesDisabledLen , uint8_t* profilesDisabled ){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[13];
 		addCIHeader(0x21,sysex);
@@ -1205,7 +1107,7 @@ class midi2Processor{
 		sendOutSysex(group,profilesDisabled,profilesDisabledLen*5,3);
 	}
 	
-	void sendProfileOn(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t* profile){
+	void midi2Processor::sendProfileOn(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t* profile){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[13];
 		addCIHeader(0x22,sysex);
@@ -1215,7 +1117,7 @@ class midi2Processor{
 		sendOutSysex(group,profile,5,3);
 	}
 	
-	void sendProfileOff(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t* profile){
+	void midi2Processor::sendProfileOff(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t* profile){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[13];
 		addCIHeader(0x23,sysex);
@@ -1225,7 +1127,7 @@ class midi2Processor{
 		sendOutSysex(group,profile,5,3);
 	}
 	
-	void sendProfileEnabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t* profile){
+	void midi2Processor::sendProfileEnabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t* profile){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[13];
 		addCIHeader(0x24,sysex);
@@ -1235,7 +1137,7 @@ class midi2Processor{
 		sendOutSysex(group,profile,5,3);
 	}
 	
-	void sendProfileDisabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t* profile){
+	void midi2Processor::sendProfileDisabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t* profile){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[13];
 		addCIHeader(0x25,sysex);
@@ -1248,7 +1150,7 @@ class midi2Processor{
     
     
     #ifdef M2_ENABLE_PE
-    void sendPECapabilityRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t numRequests){
+    void midi2Processor::sendPECapabilityRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t numRequests){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[14];
 		addCIHeader(0x30,sysex);
@@ -1257,7 +1159,7 @@ class midi2Processor{
 		sendOutSysex(group,sysex,14,0);
 	}
 	
-	void sendPEGet(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t requestId, uint16_t headerLen, uint8_t* header){
+	void midi2Processor::sendPEGet(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t requestId, uint16_t headerLen, uint8_t* header){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[13];
 		addCIHeader(0x35,sysex);
@@ -1274,7 +1176,7 @@ class midi2Processor{
 	}
 	
 	
-	void sendPEGetReply(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t requestId, uint16_t headerLen, uint8_t* header, int numberOfChunks, int numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
+	void midi2Processor::sendPEGetReply(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t requestId, uint16_t headerLen, uint8_t* header, int numberOfChunks, int numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
 		if(sendOutSysex ==0) return;
 		uint8_t sysex[13];
 		addCIHeader(0x35,sysex);
@@ -1295,7 +1197,7 @@ class midi2Processor{
 	}
 	
 	//TODO Move to Private if not needed??
-	void cleanupRequestId(uint8_t requestId){
+	void midi2Processor::cleanupRequestId(uint8_t requestId){
 		for(uint8_t i =0;i<numRequests;i++){
 			if(peRquestDetails[i].requestId == requestId){
 				peRquestDetails[i].requestId = 255;
@@ -1313,9 +1215,9 @@ class midi2Processor{
     #endif   
     
 	//-----------------------Handlers ---------------------------
-	inline void setNoteOff(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData)){ midiNoteOff = fptr; }
-	inline void setNoteOn(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData)){ midiNoteOn = fptr; }
-	inline void setControlChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value)){ controlChange = fptr; }
+	inline void midi2Processor::setNoteOff(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData)){ midiNoteOff = fptr; }
+	inline void midi2Processor::setNoteOn(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData)){ midiNoteOn = fptr; }
+	inline void midi2Processor::setControlChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value)){ controlChange = fptr; }
 	inline void setRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){ rpn = fptr; }
 	inline void setPolyPressure(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure)){ polyPressure = fptr; }
 	inline void setChannelPressure(void (*fptr)(uint8_t group, uint8_t channel, uint32_t pressure)){ channelPressure = fptr; }

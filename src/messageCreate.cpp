@@ -18,6 +18,7 @@
  * 
  * ********************************************************/
 
+#include "messageCreate.h"
 
 uint32_t mt2Create(uint8_t group,  uint8_t status, uint8_t channel, uint8_t val1, uint8_t val2){
 	uint32_t message;

@@ -18,6 +18,15 @@
  * 
  * ********************************************************/
 
+#ifndef UTILS_H
+#define UTILS_H
+
+#ifdef ARDUINO
+    #define SERIAL_PRINT  Serial.print
+#else
+    #define SERIAL_PRINT  printf
+#endif
+
 #define NOTE_OFF 0x80
 #define NOTE_ON 0x90
 #define KEY_PRESSURE 0xA0
@@ -92,68 +101,14 @@ struct peHeader {
 
 
 
-uint32_t scaleUp(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits){
-   // simple bit shift
-    if(srcVal==0){
-        return 0L;
-    }
-    if(srcBits==1){
-        return pow(2,dstBits) - 1L;
-    }
+uint32_t scaleUp(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits);
 
-    // simple bit shift
-	uint8_t scaleBits = (dstBits - srcBits);
-	uint32_t bitShiftedValue = (srcVal + 0L) << scaleBits;
-	uint32_t srcCenter = pow(2,(srcBits-1)) + 0L;
-	if (srcVal <= srcCenter ) {
-		return bitShiftedValue;
-	}
-	// expanded bit repeat scheme
-	uint8_t repeatBits = srcBits - 1;
-	unsigned int repeatMask = pow(2,repeatBits) - 1;
-	uint32_t repeatValue = srcVal & repeatMask;
-	if (scaleBits > repeatBits) {
-		repeatValue <<= scaleBits - repeatBits;
-	} else {
-		repeatValue >>= repeatBits - scaleBits;
-	}
-	while (repeatValue != 0) {
-		bitShiftedValue |= repeatValue;
-		repeatValue >>= repeatBits;
-	}
-	return bitShiftedValue;
-  
-}
+uint32_t scaleDown(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits);
 
-uint32_t scaleDown(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits) {
-	// simple bit shift
-	uint8_t scaleBits = (srcBits - dstBits);
-	return srcVal >> scaleBits;
-}
+long getNumberFromBytes(uint8_t* message, uint8_t offset, uint8_t amount);
 
-long getNumberFromBytes(byte* message, uint8_t offset, uint8_t amount){
-     
-    long num = 0;short upperOffset = offset+amount;
-	for(short offsetC = offset; offsetC<upperOffset;offsetC++){
-		num += (long)(message[offsetC] << (7* (offsetC-offset)));
-	}
-	return num;
-}
+void setBytesFromNumbers(uint8_t* message, long number, uint8_t start, uint8_t amount);
 
-void setBytesFromNumbers(uint8_t* message, long number, uint8_t start, uint8_t amount){
-	for(int amountC = amount; amountC>0;amountC--){
-		message[start++] = number & 127;
-		number = number >> 7;
-	}
-};
+void printUMP(uint32_t UMP);
 
-void printUMP(uint32_t UMP){
-	Serial.print(" ");
-	Serial.print((UMP >> 24) & 255, BIN);
-	Serial.print(" ");
-	Serial.print((UMP >> 16) & 255, BIN);
-	Serial.print(" ");
-	Serial.print((UMP >> 8) & 255, BIN);
-	Serial.print(" ");
-	Serial.print(UMP & 255, BIN);
-}
+#endif
