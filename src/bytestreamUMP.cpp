@@ -20,26 +20,11 @@
 
 #include <string.h>
 
-class midiBsToUMP{
-	private:
-		uint8_t d0;
-		uint8_t d1;
-		
-		int sysex7State = -1;
-		uint8_t sysex[6] = {0,0,0,0,0,0};
-	    uint8_t messPos=0;
-	    uint32_t umpMess[4];
-	    
-	    //Channel Based Data
-		uint8_t bankMSB[16];
-		uint8_t bankLSB[16];
-		bool rpnMode[16];
-		uint8_t rpnMsbValue[16];
-		uint8_t rpnMsb[16];
-		uint8_t rpnLsb[16];
-	    
+#include "utils.h"
+#include "bytestreamUMP.h"
+
 	 
-		void bytetreamToUMP(uint8_t d0, uint8_t d1, uint8_t d2){
+		void midiBsToUMP::bytetreamToUMP(uint8_t d0, uint8_t d1, uint8_t d2){
 		  uint8_t status = d0 & 0xF0;
 		 
 		  
@@ -165,12 +150,8 @@ class midiBsToUMP{
 		  
 		};
 		
-	
-	public:
-		uint8_t defaultGroup = 0;
-		bool outputMIDI2 = false;
 		
-		midiBsToUMP(){
+		midiBsToUMP::midiBsToUMP(){
 			memset(bankMSB, 255, sizeof(bankMSB));
 			memset(bankLSB, 255, sizeof(bankLSB));
 			memset(rpnMsbValue, 255, sizeof(rpnMsbValue));
@@ -180,11 +161,11 @@ class midiBsToUMP{
 		
 		
 		
-		bool availableUMP(){
+		bool midiBsToUMP::availableUMP(){
 			return messPos;
 		}
 		
-		uint32_t readUMP(){
+		uint32_t midiBsToUMP::readUMP(){
 			uint32_t mess = umpMess[0];			
 			for(uint8_t i=0;i<messPos;i++)
 			{
@@ -196,7 +177,7 @@ class midiBsToUMP{
 		}
 		
 		
-		void midi1BytestreamParse(uint8_t midi1Byte){
+		void midiBsToUMP::midi1BytestreamParse(uint8_t midi1Byte){
 				  
 		  if (midi1Byte == TUNEREQUEST || midi1Byte >=  TIMINGCLOCK) { 
 			  bytetreamToUMP(midi1Byte,0,0);
@@ -256,5 +237,4 @@ class midiBsToUMP{
 			  
 		  }  
 	};
-	
-};
+

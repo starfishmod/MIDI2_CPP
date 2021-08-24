@@ -18,7 +18,7 @@ build/%.o: src/%.cpp
 		-o $@ -c $< 
 
 midi2: $(OBJECTS)
-	ar -rc libmidi2.a $(OBJECTS)
+	ar -rc build/libmidi2.a $(OBJECTS)
 
 clean:
 	rm -rf build

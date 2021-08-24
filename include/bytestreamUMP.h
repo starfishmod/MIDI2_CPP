@@ -24,13 +24,31 @@
 #include <string.h>
 
 class midiBsToUMP{
-	
+
+	private:
+		uint8_t d0;
+		uint8_t d1;
+		
+		int sysex7State = -1;
+		uint8_t sysex[6] = {0,0,0,0,0,0};
+	    uint8_t messPos=0;
+	    uint32_t umpMess[4];
+	    
+	    //Channel Based Data
+		uint8_t bankMSB[16];
+		uint8_t bankLSB[16];
+		bool rpnMode[16];
+		uint8_t rpnMsbValue[16];
+		uint8_t rpnMsb[16];
+		uint8_t rpnLsb[16];
+	    	
+		void bytetreamToUMP(uint8_t d0, uint8_t d1, uint8_t d2);
+
 	public:
 		uint8_t defaultGroup = 0;
 		bool outputMIDI2 = false;
 		
 		midiBsToUMP();
-		
 		
 		bool availableUMP();
 		

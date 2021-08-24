@@ -43,10 +43,10 @@ uint32_t mt2Create_CC(uint8_t group, uint8_t channel, uint8_t index, uint32_t va
 	return mt2Create(group,  CC, channel, index, scaleDown(32,7, value));
 } 
 uint32_t mt2Create_programChange(uint8_t group, uint8_t channel, uint8_t program){
-	return mt2Create(group,  PROGRAM_CHANGE, channel, program);
+	return mt2Create(group,  PROGRAM_CHANGE, channel, program, 0);
 } 
 uint32_t mt2Create_channelPressure(uint8_t group, uint8_t channel, uint32_t pressure){
-	return mt2Create(group,  CHANNEL_PRESSURE, channel, scaleDown(32,7, pressure));
+	return mt2Create(group,  CHANNEL_PRESSURE, channel, scaleDown(32,7, pressure), 0);
 } 
 uint32_t mt2Create_pitchBend(uint8_t group, uint8_t channel, uint32_t value){
 	int pb = scaleDown(32,14, value);

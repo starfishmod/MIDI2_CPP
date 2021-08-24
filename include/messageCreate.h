@@ -18,6 +18,10 @@
  * 
  * ********************************************************/
 
+#ifndef MESSAGE_CREATE_H
+#define MESSAGE_CREATE_H
+
+#include "utils.h"
 
 uint32_t mt2Create(uint8_t group,  uint8_t status, uint8_t channel, uint8_t val1, uint8_t val2);
 
@@ -52,9 +56,5 @@ UMP64 mt4Create_programChange(uint8_t group, uint8_t channel, uint8_t program, b
     uint8_t bank, uint8_t index);
 				  
 				 
-				  
-				
-
-
-
+#endif
 
