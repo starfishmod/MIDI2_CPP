@@ -98,8 +98,8 @@ class midi2Processor{
     void (*systemReset)(uint8_t group) = 0;
     
     
-    void (*recvDiscoveryRequest)(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, int maxSysex) = 0;
-    void (*recvDiscoveryReply)(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, int maxSysex) = 0;
+    void (*recvDiscoveryRequest)(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex) = 0;
+    void (*recvDiscoveryReply)(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex) = 0;
     void (*recvNAK)(uint8_t group, uint32_t remoteMuid) = 0;
     void (*recvInvalidateMUID)(uint8_t group, uint32_t remoteMuid, uint32_t terminateMuid) = 0;
     
