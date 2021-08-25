@@ -17,12 +17,13 @@
  * SOFTWARE.
  * 
  * ********************************************************/
+#include "../include/utils.h"
+#include "../include/messageCreate.h"
 
-#include "messageCreate.h"
 
 uint32_t mt2Create(uint8_t group,  uint8_t status, uint8_t channel, uint8_t val1, uint8_t val2){
 	uint32_t message;
-	message = ((0x02 << 4) + group + 0L) << 24;
+	message = ((UMP_M1CVM << 4) + group + 0L) << 24;
 	message +=  (status + channel  + 0L) << 16;
 	message +=  (int)val1  << 8;
 	message += val2;
@@ -56,7 +57,7 @@ uint32_t mt2Create_pitchBend(uint8_t group, uint8_t channel, uint32_t value){
 
 uint32_t mt4CreateFirstWord(uint8_t group,  uint8_t status, uint8_t channel, uint8_t val1, uint8_t val2){
 	uint32_t message;
-	message = ((0x04 << 4) + group + 0L) << 24;
+	message = ((UMP_M2CVM << 4) + group + 0L) << 24;
 	message +=  (status + channel  + 0L) << 16;
 	message +=  (int)val1  << 8;
 	message += val2;

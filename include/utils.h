@@ -23,9 +23,12 @@
 
 #ifdef ARDUINO
     #define SERIAL_PRINT  Serial.print
+    #include <stdint.h>
 #else
     #define SERIAL_PRINT  printf
+    #include <cstdint>
 #endif
+
 
 #define NOTE_OFF 0x80
 #define NOTE_ON 0x90
@@ -59,6 +62,13 @@
 
 #define S7UNIVERSAL_NRT 0x7E
 #define S7UNIVERSAL_RT 0x7F
+#define S7IDREQUEST 0x06
+#define S7MIDICI 0x0D
+
+#define MIDICI_DISCOVERY 0x70
+#define MIDICI_DISCOVERYREPLY 0x71
+
+#define MIDI_PORT 0x7F
 
 #define M2_CI_BROADCAST 0xFFFFFFF
 
@@ -71,7 +81,14 @@
 #define PE_HEAD_VALUE	32
 #define PE_HEAD_BUFFERLEN	36
 
+#define UMP_UTILITY 0x00
+#define UMP_SYSTEM 0x01
+#define UMP_M1CVM 0x02
+#define UMP_SYSEX7 0x03
+#define UMP_M2CVM 0x04
+
 #include <math.h>
+
 
 
 struct UMP64{

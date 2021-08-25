@@ -19,8 +19,7 @@
  * ********************************************************/
 
 #include <math.h>
-
-#include "utils.h"
+#include "../include/utils.h"
 
 
 uint32_t scaleUp(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits){
@@ -76,15 +75,5 @@ void setBytesFromNumbers(uint8_t* message, long number, uint8_t start, uint8_t a
 		message[start++] = number & 127;
 		number = number >> 7;
 	}
-};
-
-void printUMP(uint32_t UMP){
-/*	Serial.print(" ");
-	Serial.print((UMP >> 24) & 255, BIN);
-	Serial.print(" ");
-	Serial.print((UMP >> 16) & 255, BIN);
-	Serial.print(" ");
-	Serial.print((UMP >> 8) & 255, BIN);
-	Serial.print(" ");
-	Serial.print(UMP & 255, BIN); */
 }
+
