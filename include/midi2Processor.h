@@ -39,13 +39,11 @@ class midi2Processor{
 	uint32_t umpMess[4];
 	uint8_t messPos=0;
 	
-	
 	uint8_t groupStart;
 	uint8_t groups;
 	
 	uint32_t syExMess[2]={0,0};
     uint16_t syExMessPos=0;
-    
     
     //SysEx7Based Data
     bool *sysex7State;   
@@ -55,7 +53,6 @@ class midi2Processor{
     uint8_t *sysUniPort;
     uint8_t **sys7CharBuffer;
     uint16_t **sys7IntBuffer;
-    
     uint8_t *ciType;
     uint8_t *ciVer;
     uint32_t *remoteMUID;
@@ -86,36 +83,6 @@ class midi2Processor{
     void (*recvNAK)(uint8_t group, uint32_t remoteMuid) = 0;
     void (*recvInvalidateMUID)(uint8_t group, uint32_t remoteMuid, uint32_t terminateMuid) = 0;
     
-    #ifdef M2_ENABLE_JR
-    void (*jrClock)(uint8_t group, uint16_t timing) = 0;
-    #endif
-    
-    #ifdef M2_ENABLE_PROFILE
-    void (*recvProfileInquiry)(uint8_t group, uint32_t remoteMuid, uint8_t destination) = 0;
-    void (*recvSetProfileEnabled)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
-    void (*recvSetProfileDisabled)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
-    void (*recvSetProfileOn)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
-    void (*recvSetProfileOff)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
-    #endif
-    
-    #ifdef M2_ENABLE_PE
-	peHeader *peRquestDetails;
-    uint8_t numRequests;
-    void * _pvoid;
-    void (*recvPECapabilities)(uint8_t group, uint32_t remoteMuid, uint8_t numSimulRequests) = 0;
-    void (*recvPEGetInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails) = 0;
-    void (*recvPESetInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails, uint8_t bodyLen, uint8_t*  body) = 0;
-    uint8_t getPERequestId(uint8_t groupOffset, uint8_t s7Byte);
-    void cleanupRequestId(uint8_t requestId);
-    void processPERequestHeader(uint8_t groupOffset, uint8_t reqPosUsed, uint8_t s7Byte);
-    void processPESysex(uint8_t groupOffset, uint8_t s7Byte);
-    
-    #endif
-    
-    #ifdef M2_ENABLE_IDREQ
-    void (*sendOutIdResponse)(uint8_t* devId, uint8_t* famId, uint8_t* modelId, uint8_t* ver) = 0;
-    #endif
-    
     void addCIHeader(uint8_t ciType, uint8_t* sysexHeader, uint8_t ciVersion);
     void endSysex7(uint8_t groupOffset);
     void startSysex7(uint8_t groupOffset);
@@ -124,7 +91,6 @@ class midi2Processor{
    
     
   public:
-  
 	//This Device's Data
 	uint32_t groupBlockMUID = 0; 
 	uint8_t devId[3];
@@ -134,121 +100,14 @@ class midi2Processor{
     
     uint16_t sysExMax = 512;
     
-    
-    midi2Processor(uint8_t grStart, uint8_t totalGroups
-		#ifdef M2_ENABLE_PE
-		, uint8_t numRequestsTotal
-		#endif
-	){
-		
-		groupStart = grStart;
-		groups = totalGroups;
-		
-		sysexPos = (uint16_t*)malloc(sizeof(int) * groups); 
-		sysexMode = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
-		sysUniNRTMode = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
-		sysUniPort = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
-		ciType = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
-		ciVer = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
-		remoteMUID = (uint32_t*)malloc(sizeof(uint32_t) *  groups); 
-		destMuid = (uint32_t*)malloc(sizeof(uint32_t) *  groups); 
-		
-		#ifdef M2_ENABLE_PE
-		numRequests = numRequestsTotal;
-		peRquestDetails  = ( struct peHeader * )malloc(sizeof(peHeader) *  numRequestsTotal);
-		
-		for(uint8_t i =0;i<numRequests;i++){
-			peRquestDetails[i].requestId = 255;
-			memset(peRquestDetails[i].resource,0,PE_HEAD_BUFFERLEN);
-			memset(peRquestDetails[i].resId,0,PE_HEAD_BUFFERLEN);
-			peRquestDetails[i].offset=-1;
-			peRquestDetails[i].limit=-1;
-			peRquestDetails[i].status=-1;
+    midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t numRequestsTotal);
+	~midi2Processor();
 
-		}
-		#endif
-		
-		
-		sys7CharBuffer = (uint8_t**)malloc(sizeof(uint8_t*) * groups);
-		for(uint8_t i=0; i< groups; i++){
-			*(sys7CharBuffer + i) = (uint8_t*)malloc(sizeof(uint8_t*) * 
-			#ifdef M2_ENABLE_PE
-			PE_HEAD_BUFFERLEN
-			#else
-			20
-			#endif
-			);
-		}
-		
-		sys7IntBuffer = (uint16_t**)malloc(sizeof(uint16_t*) * groups);
-		for(uint8_t i=0; i< groups; i++){
-			*(sys7IntBuffer + i) = (uint16_t*)malloc(sizeof(uint16_t) * 
-			#ifdef M2_ENABLE_PE
-			5
-			#else
-			2
-			#endif
-			);
-		}
-
-	};
-
-	~midi2Processor() { 
-		free(sysexPos); sysexPos = NULL; 
-		free(sysexMode); sysexMode = NULL; 
-		free(sysUniNRTMode); sysUniNRTMode = NULL; 
-		free(sysUniNRTMode); sysUniNRTMode = NULL; 
-		free(ciVer); ciVer = NULL; 
-		free(remoteMUID); remoteMUID = NULL; 
-		free(destMuid); destMuid = NULL; 
-		free(sys7CharBuffer); sys7CharBuffer = NULL; 
-		free(sys7IntBuffer); sys7IntBuffer = NULL; 
-		
-		#ifdef M2_ENABLE_PE
-		free(peRquestDetails); peRquestDetails = NULL;
-		#endif
-		
-	} 
-
-    
-    
-    
-
-    
-	
     void processUMP(uint32_t UMP);
-    
-    
-    #ifdef M2_ENABLE_IDREQ
-    void sendIdentityRequest (uint8_t group);
-    #endif
-    
     void sendDiscoveryRequest(uint8_t group, uint8_t ciVersion);
-	
 	void sendNAK(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion);
-	
-	#ifdef M2_ENABLE_PROFILE
-	void sendProfileListRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination);
-	
-	void sendProfileListResponse(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination,
-	        uint8_t profilesEnabledLen, uint8_t* profilesEnabled, uint8_t profilesDisabledLen , 
-			uint8_t* profilesDisabled );
-	
-	void sendProfileOn(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, 
-	        uint8_t* profile);
-	
-	void sendProfileOff(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination,
-	        uint8_t* profile);
-	
-	void sendProfileEnabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination,
-	        uint8_t* profile);
-	
-	void sendProfileDisabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, 
-	        uint8_t* profile);
-    #endif 
-    
-    
-    
+	void setInvalidateMUID(uint8_t group, uint32_t _Muid, uint8_t ciVersion);
+
 	//-----------------------Handlers ---------------------------
 	inline void setNoteOff(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData)){ midiNoteOff = fptr; }
 	inline void setNoteOn(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData)){ midiNoteOn = fptr; }
@@ -271,30 +130,78 @@ class midi2Processor{
 	inline void setActiveSense(void (*fptr)(uint8_t group)){ activeSense = fptr; }
 	inline void setSystemReset(void (*fptr)(uint8_t group)){ systemReset = fptr; }
 	
-	
-	
 	inline void setRawSysEx(void (*fptr)(uint8_t group, uint8_t *sysex ,uint16_t length, uint8_t state)){ sendOutSysex = fptr; }
 	inline void setRecvDiscovery(void (*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex)){ recvDiscoveryRequest = fptr;}
 	inline void setRecvNAK(void (*fptr)(uint8_t group, uint32_t remoteMuid)){ recvNAK = fptr;}
 	inline void setRecvInvalidateMUID(void (*fptr)(uint8_t group, uint32_t remoteMuid, uint32_t terminateMuid)){ recvInvalidateMUID = fptr;}
 
+
 	
-	#ifdef M2_ENABLE_JR
+#ifdef M2_ENABLE_IDREQ
+  private:
+	void (*sendOutIdResponse)(uint8_t* devId, uint8_t* famId, uint8_t* modelId, uint8_t* ver) = 0;
+  public:
+	void sendIdentityRequest (uint8_t group);
+    inline void setHandleIdResponse(void (*fptr)(uint8_t* devId, uint8_t* famId, uint8_t* modelId, uint8_t* ver)){ sendOutIdResponse = fptr;}
+#endif
+
+
+
+#ifdef M2_ENABLE_JR
+  private:
+	void (*jrClock)(uint8_t group, uint16_t timing) = 0;
+  public:
 	inline void setJrClock(void (*fptr)(uint8_t group,uint16_t timing));
-	#endif
-	
-	#ifdef M2_ENABLE_PROFILE
+#endif
+
+
+
+#ifdef M2_ENABLE_PROFILE
+  private:
+    void (*recvProfileInquiry)(uint8_t group, uint32_t remoteMuid, uint8_t destination) = 0;
+    void (*recvSetProfileEnabled)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
+    void (*recvSetProfileDisabled)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
+    void (*recvSetProfileOn)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
+    void (*recvSetProfileOff)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
+    void processProfileSysex(uint8_t groupOffset, uint8_t s7Byte);
+  public:
 	inline void setRecvProfileInquiry(void (*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination)){ recvProfileInquiry = fptr;}
 	inline void setRecvProfileEnabled(void (*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile)){ recvSetProfileEnabled = fptr;}
 	inline void setRecvProfileDisabled(void (*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile)){ recvSetProfileDisabled = fptr;}
 	inline void setRecvProfileOn(void (*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile)){ recvSetProfileOn = fptr;}
 	inline void setRecvProfileOff(void (*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile)){ recvSetProfileOff = fptr;}
 	//TODO Profile Specific Data Message
-    #endif
-    
-    
-    #ifdef M2_ENABLE_PE
-    void sendPECapabilityRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t numSimulRequests);
+	
+	void sendProfileListRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination);
+	void sendProfileListResponse(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination,
+	        uint8_t profilesEnabledLen, uint8_t* profilesEnabled, uint8_t profilesDisabledLen , 
+			uint8_t* profilesDisabled );
+	void sendProfileOn(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, 
+	        uint8_t* profile);
+	void sendProfileOff(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination,
+	        uint8_t* profile);
+	void sendProfileEnabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination,
+	        uint8_t* profile);
+	void sendProfileDisabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, 
+	        uint8_t* profile);
+#endif
+
+
+
+#ifdef M2_ENABLE_PE
+  private:
+	peHeader *peRquestDetails;
+    uint8_t numRequests;
+    void * _pvoid;
+    void (*recvPECapabilities)(uint8_t group, uint32_t remoteMuid, uint8_t numSimulRequests) = 0;
+    void (*recvPEGetInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails) = 0;
+    void (*recvPESetInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails, uint8_t bodyLen, uint8_t*  body) = 0;
+    uint8_t getPERequestId(uint8_t groupOffset, uint8_t s7Byte);
+    void cleanupRequestId(uint8_t requestId);
+    void processPERequestHeader(uint8_t groupOffset, uint8_t reqPosUsed, uint8_t s7Byte);
+    void processPESysex(uint8_t groupOffset, uint8_t s7Byte);
+  public:
+	void sendPECapabilityRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t numSimulRequests);
 	
 	void sendPEGet(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, 
 	        uint16_t headerLen, uint8_t* header);
@@ -307,13 +214,6 @@ class midi2Processor{
     inline void setRecvPEGetInquiry(void (*fptr)(uint8_t group, uint32_t remoteMuid,  peHeader requestDetails)){ recvPEGetInquiry = fptr;}
     inline void setRecvPESetInquiry(void (*fptr)(uint8_t group, uint32_t remoteMuid,  peHeader requestDetails, uint8_t bodyLen, uint8_t*  body)){ recvPESetInquiry = fptr;}
     //TODO PE Notify
-    #endif
-	
-	
-	
-	
-	#ifdef M2_ENABLE_IDREQ
-    inline void setHandleIdResponse(void (*fptr)(uint8_t* devId, uint8_t* famId, uint8_t* modelId, uint8_t* ver)){ sendOutIdResponse = fptr;}
-    #endif
+#endif
 	
 };

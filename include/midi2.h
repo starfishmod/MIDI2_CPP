@@ -26,6 +26,7 @@
 #include "bytestreamUMP.h"
 #include "midi2Processor.h"
 #include "midi2PropertyExchange.h"
+#include "midi2Profiles.h"
 
 
 #endif

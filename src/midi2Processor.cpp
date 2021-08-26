@@ -27,6 +27,76 @@
     #include <stdlib.h>
 #endif
 
+midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t numRequestsTotal){
+	groupStart = grStart;
+	groups = totalGroups;
+	
+	sysexPos = (uint16_t*)malloc(sizeof(int) * groups); 
+	sysexMode = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
+	sysUniNRTMode = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
+	sysUniPort = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
+	ciType = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
+	ciVer = (uint8_t*)malloc(sizeof(uint8_t) * groups); 
+	remoteMUID = (uint32_t*)malloc(sizeof(uint32_t) *  groups); 
+	destMuid = (uint32_t*)malloc(sizeof(uint32_t) *  groups); 
+	
+	#ifdef M2_ENABLE_PE
+	numRequests = numRequestsTotal;
+	peRquestDetails  = ( struct peHeader * )malloc(sizeof(peHeader) *  numRequestsTotal);
+	
+	for(uint8_t i =0;i<numRequests;i++){
+		peRquestDetails[i].requestId = 255;
+		memset(peRquestDetails[i].resource,0,PE_HEAD_BUFFERLEN);
+		memset(peRquestDetails[i].resId,0,PE_HEAD_BUFFERLEN);
+		peRquestDetails[i].offset=-1;
+		peRquestDetails[i].limit=-1;
+		peRquestDetails[i].status=-1;
+
+	}
+	#endif
+	
+	
+	sys7CharBuffer = (uint8_t**)malloc(sizeof(uint8_t*) * groups);
+	for(uint8_t i=0; i< groups; i++){
+		*(sys7CharBuffer + i) = (uint8_t*)malloc(sizeof(uint8_t*) * 
+		#ifdef M2_ENABLE_PE
+		PE_HEAD_BUFFERLEN
+		#else
+		20
+		#endif
+		);
+	}
+	
+	sys7IntBuffer = (uint16_t**)malloc(sizeof(uint16_t*) * groups);
+	for(uint8_t i=0; i< groups; i++){
+		*(sys7IntBuffer + i) = (uint16_t*)malloc(sizeof(uint16_t) * 
+		#ifdef M2_ENABLE_PE
+		5
+		#else
+		2
+		#endif
+		);
+	}
+}
+
+midi2Processor::~midi2Processor() { 
+	free(sysexPos); sysexPos = NULL; 
+	free(sysexMode); sysexMode = NULL; 
+	free(sysUniNRTMode); sysUniNRTMode = NULL; 
+	free(sysUniNRTMode); sysUniNRTMode = NULL; 
+	free(ciVer); ciVer = NULL; 
+	free(remoteMUID); remoteMUID = NULL; 
+	free(destMuid); destMuid = NULL; 
+	free(sys7CharBuffer); sys7CharBuffer = NULL; 
+	free(sys7IntBuffer); sys7IntBuffer = NULL; 
+	
+	#ifdef M2_ENABLE_PE
+	free(peRquestDetails); peRquestDetails = NULL;
+	#endif
+	
+}
+
+
 void midi2Processor::addCIHeader(uint8_t _ciType, uint8_t* sysexHeader, uint8_t _ciVer){
 
 	sysexHeader[0]=S7UNIVERSAL_NRT;
@@ -237,7 +307,7 @@ void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte){
 				}
 				break;
 				
-			case 0x7E: //MIDI-CI Invalidate MUID Message
+			case MIDICI_INVALIDATEMUID: //MIDI-CI Invalidate MUID Message
 				if(sysexPos[groupOffset] == 13){
 					destMuid[groupOffset] = 0;
 				}
@@ -250,7 +320,7 @@ void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte){
 					recvInvalidateMUID(groupOffset + groupStart,remoteMUID[groupOffset], destMuid[groupOffset]);
 				}
 				break;	
-			case 0x7F: //MIDI-CI NAK
+			case MIDICI_NAK: //MIDI-CI NAK
 				if (recvNAK != 0){
 					recvNAK(groupOffset + groupStart,remoteMUID[groupOffset]);
 				}
@@ -261,86 +331,12 @@ void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte){
 			
 			#ifdef M2_ENABLE_PROFILE  
 			case 0x20: //Profile Inquiry
-				
-				if (sysexPos[groupOffset] == 12 && recvProfileInquiry != 0){
-					//Serial.print("<-Profile Inquiry: remoteMuid ");Serial.print(remoteMUID[groupOffset]);
-					//Serial.print(" dest ");Serial.println(sysUniPort[groupOffset]);
-					recvProfileInquiry(groupOffset + groupStart, remoteMUID[groupOffset], sysUniPort[groupOffset]);
-				}
-				break;
 			case 0x21: //Reply to Profile Inquiry
-				//Serial.print("<-Reply to Profile Inquiry: remoteMuid ");Serial.print(remoteMUID[groupOffset]);
-				//Serial.print(" dest ");Serial.println(sysUniPort[groupOffset]);
-				
-				//Serial.print(sysexPos[groupOffset]);Serial.print(" - ");Serial.println(s7Byte);
-				
-				if(sysexPos[groupOffset] == 13){
-					sys7IntBuffer[groupOffset][0] = (int)s7Byte;
-				}
-				if(sysexPos[groupOffset] == 14){
-					sys7IntBuffer[groupOffset][0] += (int)s7Byte << 7;
-				}
-				
-				if(sysexPos[groupOffset] == 13 + sys7CharBuffer[groupOffset][0]*5){
-					sys7IntBuffer[groupOffset][1] = (int)s7Byte;
-				}
-				if(sysexPos[groupOffset] == 14 + sys7CharBuffer[groupOffset][0]*5){
-					sys7IntBuffer[groupOffset][1] += (int)s7Byte << 7;
-				}
-				if(sysexPos[groupOffset] >= 15 && sysexPos[groupOffset] <= 12 + sys7IntBuffer[groupOffset][0]*5){
-					uint8_t pos = (sysexPos[groupOffset] - 13) % 5;
-					sys7CharBuffer[groupOffset][pos] = s7Byte;
-					if(pos==4 && recvSetProfileEnabled!=0){
-						uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-						recvSetProfileEnabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
-					}
-				}
-				
-				if(sysexPos[groupOffset] >= 15 + sys7CharBuffer[groupOffset][0]*5  && sysexPos[groupOffset] <= 12 + sys7IntBuffer[groupOffset][0]*5 + sys7IntBuffer[groupOffset][1]*5){
-					uint8_t pos = (sysexPos[groupOffset] - 13) % 5;
-					sys7CharBuffer[groupOffset][pos] = s7Byte;
-					if(pos==4 && recvSetProfileDisabled!=0){
-						uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-						recvSetProfileDisabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
-					}
-				}
-				//processProfileInquiryReply(s7Byte);
-				break;
 			case 0x22: //Set Profile On Message
-				if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
-					sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
-				}
-				if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
-					uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-					recvSetProfileOn(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
-				}
-				break;
-			case 0x23: //Set Profile Off Message
-				if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
-					sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
-				}
-				if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
-					uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-					recvSetProfileOff(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
-				}
-				break;	
-			case 0x24: //Set Profile Enabled Message
-				if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
-					sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
-				}
-				if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
-					uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-					recvSetProfileEnabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
-				}
-				break;  
-			case 0x25: //Set Profile Diabled Message
-				if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
-					sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
-				}
-				if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
-					uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-					recvSetProfileDisabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
-				}
+			case 0x23: //Set Profile Off Message	
+			case 0x24: //Set Profile Enabled Message  
+			case 0x25: //Set Profile Disabled Message
+				processProfileSysex(groupOffset, s7Byte);
 				break;   
 			#endif   
 			
@@ -352,10 +348,8 @@ void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte){
 			case 0x35: // Reply To Get Property Data - Needs Work!
 			case 0x36: // Inquiry: Set Property Data
 				processPESysex(groupOffset, s7Byte);
-			
 				break;
-			
-		#endif   
+			#endif   
 		
 		}
 		
@@ -626,9 +620,19 @@ void midi2Processor::sendDiscoveryRequest(uint8_t group, uint8_t ciVersion){
 void midi2Processor::sendNAK(uint8_t group, uint32_t _remoteMuid, uint8_t ciVersion){
 	if(sendOutSysex ==0) return;
 	uint8_t sysex[13];
-	addCIHeader(0x7F,sysex,ciVersion);
+	addCIHeader(MIDICI_NAK,sysex,ciVersion);
 	setBytesFromNumbers(sysex, _remoteMuid, 9, 4);
 	sendOutSysex(group,sysex,13,0);
+}
+
+void midi2Processor::setInvalidateMUID(uint8_t group, uint32_t _Muid, uint8_t ciVersion){
+	if(sendOutSysex ==0) return;
+	uint8_t sysex[13];
+	addCIHeader(MIDICI_INVALIDATEMUID,sysex,ciVersion);
+	setBytesFromNumbers(sysex, M2_CI_BROADCAST, 9, 4);
+	sendOutSysex(group,sysex,13,1);
+	setBytesFromNumbers(sysex, _Muid, 0, 4);
+	sendOutSysex(group,sysex,4,3);
 }
 
 
@@ -641,77 +645,6 @@ void midi2Processor::sendIdentityRequest (uint8_t group){
 }
 
 #endif
-
-
-#ifdef M2_ENABLE_PROFILE
-void midi2Processor::sendProfileListRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination){
-	if(sendOutSysex ==0) return;
-	uint8_t sysex[13];
-	addCIHeader(0x20,sysex,ciVersion);
-	sysex[1] = destination;
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
-	sendOutSysex(group,sysex,13,0);
-}
-
-
-void midi2Processor::sendProfileListResponse(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, uint8_t profilesEnabledLen, uint8_t* profilesEnabled, uint8_t profilesDisabledLen , uint8_t* profilesDisabled ){
-	if(sendOutSysex ==0) return;
-	uint8_t sysex[13];
-	addCIHeader(0x21,sysex,ciVersion);
-	sysex[1] = destination;
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
-	sendOutSysex(group,sysex,13,1);
-	
-	setBytesFromNumbers(sysex, profilesEnabledLen, 0, 2);
-	sendOutSysex(group,sysex,2,2);
-	sendOutSysex(group,profilesEnabled,profilesEnabledLen*5,2);
-	
-	setBytesFromNumbers(sysex, profilesDisabledLen, 0, 2);
-	sendOutSysex(group,sysex,2,2);
-	sendOutSysex(group,profilesDisabled,profilesDisabledLen*5,3);
-}
-
-void midi2Processor::sendProfileOn(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex ==0) return;
-	uint8_t sysex[13];
-	addCIHeader(0x22,sysex,ciVersion);
-	sysex[1] = destination;
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
-	sendOutSysex(group,sysex,13,1);
-	sendOutSysex(group,profile,5,3);
-}
-
-void midi2Processor::sendProfileOff(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex ==0) return;
-	uint8_t sysex[13];
-	addCIHeader(0x23,sysex,ciVersion);
-	sysex[1] = destination;
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
-	sendOutSysex(group,sysex,13,1);
-	sendOutSysex(group,profile,5,3);
-}
-
-void midi2Processor::sendProfileEnabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex ==0) return;
-	uint8_t sysex[13];
-	addCIHeader(0x24,sysex,ciVersion);
-	sysex[1] = destination;
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
-	sendOutSysex(group,sysex,13,1);
-	sendOutSysex(group,profile,5,3);
-}
-
-void midi2Processor::sendProfileDisabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex ==0) return;
-	uint8_t sysex[13];
-	addCIHeader(0x25,sysex,ciVersion);
-	sysex[1] = destination;
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
-	sendOutSysex(group,sysex,13,1);
-	sendOutSysex(group,profile,5,3);
-}
-#endif 
-
 
 
 
