@@ -33,6 +33,9 @@ This library is designed to use a small footprint. This means it is upto the app
 
 This means the overheads for a simple MIDI 2.0 device is down to a compiled size of around 10k (possibly less?), with a memory footprint of around 1k.
 
+## Documentation
+Can be found on the [WIKI](https://github.com/starfishmod/MIDI2_CPP/wiki)
+
 ### TODO
 * Protocol Negotiation
 * PE Get Reply handling
@@ -207,139 +210,6 @@ void loop()
 ```
 
 ---
-## midiBsToUMP
-Class used for translating between a raw MIDI 1.0 Byte stream and UMP
-
-### Common methods
-#### void midi1BytestreamParse(uint8_t midi1Byte)
-Process incoming MIDI 1.0 Byte stream
-
-#### bool availableUMP()
-Check if there are available UMP packets after processing the Byte Stream
-
-#### uint32_t readUMP()
-Return a 32Bit word for a UMP Packet. A Bystream conversion may create several UMP packets.
-
----
-## midi2Processor
-Processing of MIDI 1.0 and 2.0 Channel voice messages use the same processing function.
-#### midi2Processor(uint8_t groupStart, uint8_t totalGroups)
-#### midi2Processor(uint8_t groupStart, uint8_t totalGroups, uint8_t numPERequests) - When M2_ENABLE_PROFILE is defined
-Initialize the with the Group number to start with and the amount of UMP groups to work with. numPERequests represents the amount simultaneous PE streams that can be handled
-
-### public variables
-#### uint32_t groupBlockMUID = 0; 
-#### uint8_t devId[3];
-#### uint8_t famId[2];
-#### uint8_t modelId[2];
-#### uint8_t ver[4]; 
-#### uint16_t sysExMax = 512;
-
-### Common Methods
-#### void processUMP(uint32_t UMP)
-Process incoming UMP messages broken up into 32bit words
-
-### Common Handlers
-#### inline void setNoteOff(void (\*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData))
-Set the callable funtion when a Note Off is processed by processUMP
-
-#### inline void setMidiNoteOn(void (\*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData))
-#### inline void setControlChange(void (\*fptr)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value))
-#### inline void setRPN(void (\*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value))
-#### inline void setPolyPressure(void (\*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure))
-#### inline void setChannelPressure(void (\*fptr)(uint8_t group, uint8_t channel, uint32_t pressure))
-#### inline void setPitchBend(void (\*fptr)(uint8_t group, uint8_t channel, uint32_t value))
-#### inline void setProgramChange(void (\*fptr)(uint8_t group, uint8_t channel, uint8_t program, bool bankValid, uint8_t bank, uint8_t index))
-#### inline void setTimingCode(void (\*fptr)(uint8_t group,uint8_t timeCode)){
-#### inline void setSongSelect(void (\*fptr)(uint8_t group,uint8_t song))
-#### inline void setSongPositionPointer(void (*\fptr)(uint8_t group,uint16_t positio))
-#### inline void setTuneRequest(void (\*fptr)(uint8_t group))
-#### inline void setTimingClock(void (\*fptr)(uint8_t group))
-#### inline void setSeqStart(void (\*fptr)(uint8_t group))
-#### inline void setSeqCont(void (\*fptr)(uint8_t group))
-#### inline void setSeqStop(void (\*fptr)(uint8_t group))
-#### inline void setActiveSense(void (\*fptr)(uint8_t group))
-#### inline void setSystemReset(void (\*fptr)(uint8_t group))
-
-### Common SysEx Handlers
-#### inline void setRawSysEx(void (\*fptr)(uint8_t group, uint8_t\* sysex ,uint16_t length, uint8_t state))
-Any SysEx generated from either MIDI-CI resposes or from direct Method calls are sent here
-Message are often chunked. as such the ```state``` argument contains information if this is a whole SysEx message or partial.
-Leading 0xF0 and 0xF7 are never sent.
-
- * **0** - Complete SysEx message
- * **1** - Start of a SysEx message
- * **2** - Continue a SysEx message
- * **3** - Last part of a SysEx message
-
-#### inline void setRecvDiscoveryRequest(void (\*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t\* manuId, uint8_t\* famId, uint8_t\* modelId, uint8_t\* verId, uint8_t ciSupport, uint16_t maxSysex))
-Process Incoming Discovery Request Device details or Reply to Discovery Device details. When the class recieves a Discovery Message it will automatically reply with a Reply to Discovery Message. This is sent to the function set by ```setRawSysEx```.
-
-After triggering off a ```sendDiscoveryRequest``` replies will be sent here.
-
-#### inline void setRecvNAK(void (\*fptr)(uint8_t group, uint32_t remoteMuid))
-#### inline void setRecvInvalidateMUID(void (\*fptr)(uint8_t group, uint32_t remoteMuid, uint32_t terminateMuid))
-
-## Common SysEx Methods
-### void sendDiscoveryRequest(uint8_t group, uint8_t ciVer)
-### void sendNAK(uint8_t group, uint32_t remoteMuid, uint8_t ciVer)
-
----
-## midi2Processor M2_ENABLE_IDREQ Methods
-These are available if ```#define M2_ENABLE_IDREQ``` is set. 
-If a Device ID Request is received the class will automatically send a reply based on the DeviceId, Model, Famil and Version information provided.
-
-### void sendIdentityRequest (uint8_t group)
-Send out a Universal SysEx Device ID Request
-
-### inline void setHandleIdResponse(void (\*fptr)(uint8_t\* devId, uint8_t\* famId, uint8_t\* modelId, uint8_t\* ver))
-Set handler for recieving Universal SysEx Device ID Reply.
-
----
-## midi2Processor M2_ENABLE_PROFILE Methods
-This enable processing of MIDI-CI Profiles. These methods are available if ```#define M2_ENABLE_PROFILE``` is set.
-
-### void sendProfileListRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination)
-Send a Request to get list of Profiles. use a destination of 0x7F to get all Profiles across all channels.
-Enabled and Disabled Profiles are sent to the ```setRecvProfileEnabled``` and ```setRecvProfileDisabled``` respectively.
-
-### void sendProfileListResponse(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t profilesEnabledLen, uint8_t\* profilesEnabled, uint8_t profilesDisabledLen , uint8_t\* profilesDisabled)
-Send a Profile List Response Message.
-
-```profilesEnabledLen``` and ```profilesDisabledLen``` represent how many Profiles. ```profilesEnabled``` and ```profilesDisabled``` arguments should be 5 times the length of ```profilesEnabledLen``` and ```profilesDisabledLen``` respectively.
-
-### void sendProfileOn(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t\* profile)
-```profile``` is alway 5 bytes.
-
-### void sendProfileOff(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t\* profile)
-### void sendProfileEnabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t\* profile)
-### void sendProfileDisabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t destination, uint8_t\* profile)
-
-### inline void setRecvProfileInquiry(void (\*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination))
-```sendProfileListResponse``` should be used in Response to this Message.
-
-### inline void setRecvProfileEnabled(void (\*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t\* profile))
-### inline void setRecvProfileDisabled(void (\*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t\* profile))
-### inline void setRecvProfileOn(void (\*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t\* profile))
-### inline void setRecvProfileOff(void (\*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t\* profile))
 
 
----
-## midi2Processor M2_ENABLE_PE Methods
-This enable processing of MIDI-CI Property Exchange. These methods are available if ```#define M2_ENABLE_PE``` is set.
 
-Property Exchange requires a bit more memory than other parts of MIDI-CI. Enabling this will increase memory requirements.
-
-### void sendPECapabilityRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t numRequests)
-### void sendPEGet(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t requestId, uint16_t headerLen, uint8_t* header)
-### void sendPEGetReply(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t requestId, uint16_t headerLen, uint8_t\* header, int numberOfChunks, int numberOfThisChunk, uint16_t bodyLength , uint8_t\* body)
-
-### inline void setPECapabilities(void (\*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t numRequests))
-### inline void setRecvPEGetInquiry(void (\*fptr)(uint8_t group, uint32_t remoteMuid,  peHeader requestDetails))
-### inline void setRecvPESetInquiry(void (\*fptr)(uint8_t group, uint32_t remoteMuid,  peHeader requestDetails, uint8_t bodyLen, uint8_t\*  body))
-
----
-## midi2Processor M2_ENABLE_JR
-Enable Processing of JR Timestamps. These methods are available if ```#M2_ENABLE_JR M2_ENABLE_PE``` is set.
-
-### inline void setJrClock(void (\*fptr)(uint8_t group,uint16_t timing))
