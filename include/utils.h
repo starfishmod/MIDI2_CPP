@@ -102,7 +102,7 @@ struct UMP128{
 };
 
 
-#ifdef M2_ENABLE_PE
+#ifndef M2_DISABLE_PE
 struct peHeader {
     char resource[PE_HEAD_BUFFERLEN]="";
     char resId[PE_HEAD_BUFFERLEN]="";

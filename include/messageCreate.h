@@ -54,6 +54,7 @@ UMP64 mt4Create_pitchBend(uint8_t group, uint8_t channel, uint32_t pitch);
 UMP64 mt4Create_cc(uint8_t group, uint8_t channel, uint8_t index, uint32_t value);
 
 UMP64 mt4Create_rpn(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value);
+UMP64 mt4Create_nrpn(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value);
 
 UMP64 mt4Create_channelPressure(uint8_t group, uint8_t channel,uint32_t pressure);
 

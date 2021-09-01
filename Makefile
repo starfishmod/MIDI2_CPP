@@ -1,8 +1,7 @@
 
 OPTS= -g -Wuninitialized -Wmaybe-uninitialized -Wall -Wshadow -Wcast-qual \
       -Wextra -pedantic -Wno-unused-parameter \
-      -Wno-c++11-extensions \
-      -DM2_ENABLE_PROFILE -DM2_ENABLE_PE -DM2_ENABLE_IDREQ
+      -Wno-c++11-extensions 
 
 SOURCES=$(shell find ./src -name *.cpp)
 

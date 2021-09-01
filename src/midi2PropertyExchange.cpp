@@ -5,7 +5,7 @@
 
 
 
-#ifdef M2_ENABLE_PE
+#ifndef M2_DISABLE_PE
 
 
 

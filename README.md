@@ -2,7 +2,7 @@
 A MIDI 2.0 Library for Embedded/Arduino Devices
 
 ## IMPORTANT! Please read first
-THIS LIBRARY IS UNDER DEVELOPMENT - Code here today, is likely gone tomorrow!
+THIS LIBRARY IS CURRENTLY UNDER DEVELOPMENT - Code here today, is likely gone tomorrow!
 
 I AM NOT A PROFESIONAL C++ DEVELOPER. If you see code here that :
 * could be styled/structured better
@@ -14,7 +14,9 @@ I AM NOT A PROFESIONAL C++ DEVELOPER. If you see code here that :
 
 Then please submit PR's and/or issues - but PR's preferred. 
 
-Given this - please use this library at your own risk! Long term I hope that this library will be improved enough so it can be useful to others.
+Given this - please use this library at your own risk! I hope that this library is useful to everyone making MIDI 2.0 Devices.
+
+If you do use this library please let me know! I am keen to see all the MIDI 2.0 Projects. This code is also available for DIY and commercial use (MIT Licence)
 
 ## What does this do?
 Please read the MIDI 2.0 specification on https://midi.org/specifications to understand the following.
@@ -23,13 +25,14 @@ This library can:
 * Convert MIDI 1.0 Byte stream to UMP
 * Process and send UMP Streams
 * Process and Send MIDI-CI Messages
-* Build UMP 32 bit Words to send
+* Build UMP 32 bit Words to send out
 
-This library is designed to use a small footprint. This means it is upto the appliction to:
+This library is designed to use a small footprint. It does this by processing each UMP packet (or MIDI 1.0 Bystream) one at a time. This way large data is handled in small chunks to keep memory small.
+
+This means it is upto the application to:
  * Store Remote MIDI-CI Device details
  * Upon receiving MIDI-CI Message to interpret the Messages data structure (e.g. Profile Id bytes, Note On Articulation etc.)
  * Handle logic and NAK sending and receiving.
- * Large data is handled in small chunks to keep memory small.
 
 This means the overheads for a simple MIDI 2.0 device is down to a compiled size of around 10k (possibly less?), with a memory footprint of around 1k.
 
@@ -133,7 +136,6 @@ void loop()
 UMP Streams accepts a series of 32 bit values. UMP messages that have 64bit will provide 2 UMP words.
 
 ```C++
-#define M2_ENABLE_PROFILE
 
 #include "midi2.h"
 midi2Processor MIDI2 (0,2); 
@@ -183,10 +185,7 @@ void setup()
   randomSeed(analogRead(8));
   Serial.begin(31250);
   MIDI2.groupBlockMUID = random(0xFFFFEFF);
-  MIDI2.devId[0]=0x7E; // Research SysEx ID
-  
-  MIDI2.modelId[0]=0x7F;
-  MIDI2.modelId[1]=0x20;
+  MIDI2.ciSupport=0b100;
   
   MIDI2.setRecvDiscovery(discovery);
   MIDI2.setRecvNAK(nak);

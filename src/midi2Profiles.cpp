@@ -5,7 +5,7 @@
 
 
 
-#ifdef M2_ENABLE_PROFILE
+#ifndef M2_DISABLE_PROFILE
 
 
 

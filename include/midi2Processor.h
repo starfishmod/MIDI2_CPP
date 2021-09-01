@@ -26,7 +26,7 @@
     #include <cstdint>
 #endif
 
-#ifdef M2_ENABLE_PE
+#ifndef M2_DISABLE_PE
 #include <string.h>
 #endif
 
@@ -62,6 +62,7 @@ class midi2Processor{
     void (*midiNoteOn)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData) = 0;
     void (*controlChange)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value) = 0;
     void (*rpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, uint32_t value) = 0;
+    void (*nrpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, uint32_t value) = 0;
     void (*polyPressure)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure) = 0;
     void (*channelPressure)(uint8_t group, uint8_t channel, uint32_t pressure) = 0;
     void (*pitchBend)(uint8_t group, uint8_t channel, uint32_t value) = 0;
@@ -93,7 +94,8 @@ class midi2Processor{
   public:
 	//This Device's Data
 	uint32_t groupBlockMUID = 0; 
-	uint8_t devId[3];
+	uint8_t ciSupport = 0; 
+	uint8_t devId[3] = {0x7D , 0, 0};
     uint8_t famId[2];
     uint8_t modelId[2];
     uint8_t ver[4]; 
@@ -113,11 +115,12 @@ class midi2Processor{
 	inline void setNoteOn(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData)){ midiNoteOn = fptr; }
 	inline void setControlChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value)){ controlChange = fptr; }
 	inline void setRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){ rpn = fptr; }
+	inline void setNRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){ nrpn = fptr; }
 	inline void setPolyPressure(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure)){ polyPressure = fptr; }
 	inline void setChannelPressure(void (*fptr)(uint8_t group, uint8_t channel, uint32_t pressure)){ channelPressure = fptr; }
 	inline void setPitchBend(void (*fptr)(uint8_t group, uint8_t channel, uint32_t value)){ pitchBend = fptr; }
 	inline void setProgramChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t program, bool bankValid, uint8_t bank, uint8_t index)){ programChange = fptr; }
-	//TODO NRPNs, relative, per note etc
+	//TODO relative, per note etc
 
 	inline void setTimingCode(void (*fptr)(uint8_t group,uint8_t timeCode)){ timingCode = fptr; }
 	inline void setSongSelect(void (*fptr)(uint8_t group,uint8_t song)){ songSelect = fptr; }
@@ -137,7 +140,7 @@ class midi2Processor{
 
 
 	
-#ifdef M2_ENABLE_IDREQ
+#ifndef M2_DISABLE_IDREQ
   private:
 	void (*sendOutIdResponse)(uint8_t* devId, uint8_t* famId, uint8_t* modelId, uint8_t* ver) = 0;
   public:
@@ -147,7 +150,7 @@ class midi2Processor{
 
 
 
-#ifdef M2_ENABLE_JR
+#ifndef M2_DISABLE_JR
   private:
 	void (*jrClock)(uint8_t group, uint16_t timing) = 0;
   public:
@@ -156,7 +159,7 @@ class midi2Processor{
 
 
 
-#ifdef M2_ENABLE_PROFILE
+#ifndef M2_DISABLE_PROFILE
   private:
     void (*recvProfileInquiry)(uint8_t group, uint32_t remoteMuid, uint8_t destination) = 0;
     void (*recvSetProfileEnabled)(uint8_t group, uint32_t remoteMuid, uint8_t destination, uint8_t* profile) = 0;
@@ -188,7 +191,7 @@ class midi2Processor{
 
 
 
-#ifdef M2_ENABLE_PE
+#ifndef M2_DISABLE_PE
   private:
 	peHeader *peRquestDetails;
     uint8_t numRequests;

@@ -109,6 +109,13 @@ UMP64 mt4Create_rpn(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index,
 	return umpMess;
 } 
 
+UMP64 mt4Create_nrpn(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value){
+	UMP64 umpMess;
+	umpMess.UMP[0] = mt4CreateFirstWord(group,  NRPN , channel, bank, index);
+	umpMess.UMP[1] = value;
+	return umpMess;
+} 
+
 
 UMP64 mt4Create_channelPressure(uint8_t group, uint8_t channel,uint32_t pressure){
 	UMP64 umpMess;

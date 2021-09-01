@@ -40,7 +40,7 @@ midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t num
 	remoteMUID = (uint32_t*)malloc(sizeof(uint32_t) *  groups); 
 	destMuid = (uint32_t*)malloc(sizeof(uint32_t) *  groups); 
 	
-	#ifdef M2_ENABLE_PE
+	#ifndef M2_DISABLE_PE
 	numRequests = numRequestsTotal;
 	peRquestDetails  = ( struct peHeader * )malloc(sizeof(peHeader) *  numRequestsTotal);
 	
@@ -59,7 +59,7 @@ midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t num
 	sys7CharBuffer = (uint8_t**)malloc(sizeof(uint8_t*) * groups);
 	for(uint8_t i=0; i< groups; i++){
 		*(sys7CharBuffer + i) = (uint8_t*)malloc(sizeof(uint8_t*) * 
-		#ifdef M2_ENABLE_PE
+		#ifndef M2_DISABLE_PE
 		PE_HEAD_BUFFERLEN
 		#else
 		20
@@ -70,7 +70,7 @@ midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t num
 	sys7IntBuffer = (uint16_t**)malloc(sizeof(uint16_t*) * groups);
 	for(uint8_t i=0; i< groups; i++){
 		*(sys7IntBuffer + i) = (uint16_t*)malloc(sizeof(uint16_t) * 
-		#ifdef M2_ENABLE_PE
+		#ifndef M2_DISABLE_PE
 		5
 		#else
 		2
@@ -90,7 +90,7 @@ midi2Processor::~midi2Processor() {
 	free(sys7CharBuffer); sys7CharBuffer = NULL; 
 	free(sys7IntBuffer); sys7IntBuffer = NULL; 
 	
-	#ifdef M2_ENABLE_PE
+	#ifndef M2_DISABLE_PE
 	free(peRquestDetails); peRquestDetails = NULL;
 	#endif
 	
@@ -159,7 +159,7 @@ void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte){
 	
 	switch(sysUniNRTMode[groupOffset]){
 		
-	#ifdef M2_ENABLE_IDREQ  
+	#ifndef M2_DISABLE_IDREQ  
 	case S7IDREQUEST:
 		if(sysexPos[groupOffset] == 3 && s7Byte == 0x01){
 		//Identity Request - send a reply?
@@ -264,20 +264,9 @@ void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte){
 					sendOutSysex(groupOffset + groupStart,ver,4,2);
 					
 					//Capabilities
-					sysex[0]=0; 
-					#ifdef M2_ENABLE_PROTOCOL
-					sysex[0] += 0b10;
-					#endif
-					#ifdef M2_ENABLE_PROFILE
-					sysex[0] += 0b100;
-					#endif
-					#ifdef M2_ENABLE_PE
-					sysex[0] += 0b1000;
-					#endif 
-					sendOutSysex(groupOffset + groupStart,sysex,1,2);
-					
-					setBytesFromNumbers(sysex, sysExMax, 0, 4);
-					sendOutSysex(groupOffset + groupStart,sysex,4,3);
+					sysex[0]=ciSupport; 					
+					setBytesFromNumbers(sysex, sysExMax, 1, 4);
+					sendOutSysex(groupOffset + groupStart,sysex,5,3);
 					
 				}
 
@@ -326,10 +315,10 @@ void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte){
 				}
 				break;
 				
-			#ifdef M2_ENABLE_PROTOCOL
+			#ifndef M2_DISABLE_PROTOCOL
 			#endif     
 			
-			#ifdef M2_ENABLE_PROFILE  
+			#ifndef M2_DISABLE_PROFILE  
 			case 0x20: //Profile Inquiry
 			case 0x21: //Reply to Profile Inquiry
 			case 0x22: //Set Profile On Message
@@ -341,7 +330,7 @@ void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte){
 			#endif   
 			
 			
-			#ifdef M2_ENABLE_PE 
+			#ifndef M2_DISABLE_PE 
 			case 0x30: //Inquiry: Property Exchange Capabilities
 			case 0x31: //Reply to Property Exchange Capabilities			
 			case 0x34:  // Inquiry: Get Property Data
@@ -364,11 +353,9 @@ void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte){
 
 void midi2Processor::processUMP(uint32_t UMP){
 	umpMess[messPos] = UMP;
-	//Serial.print(" UMP Proc: ");Serial.print(messPos);Serial.print("  ");Serial.println(umpMess[messPos]);
-
-	
-	uint8_t mt = umpMess[0] >> 28  & 0xF;
-	uint8_t group = umpMess[0] >> 24 & 0xF;
+		
+	uint8_t mt = (umpMess[0] >> 28)  & 0xF;
+	uint8_t group = (umpMess[0] >> 24) & 0xF;
 	uint8_t groupOffset = group - groupStart;  
 
 	
@@ -383,7 +370,7 @@ void midi2Processor::processUMP(uint32_t UMP){
 			// TODO Break up into JR TimeStamp Messages offsets
 			uint8_t status = (umpMess[0] >> 20) & 0xF;
 			
-			#ifdef M2_ENABLE_JR
+			#ifndef M2_DISABLE_JR
 			uint16_t timing = (umpMess[0] >> 16) & 0xFFFF;
 			#endif
 			
@@ -391,7 +378,7 @@ void midi2Processor::processUMP(uint32_t UMP){
 				case 0: // NOOP 
 				//if(group== 0 && noop != 0) noop();
 				break;
-			#ifdef M2_ENABLE_JR	
+			#ifndef M2_DISABLE_JR	
 				case 0b1: // JR Clock Message 
 				if(jrClock != 0) jrClock(group, timing);
 				break;
@@ -510,9 +497,9 @@ void midi2Processor::processUMP(uint32_t UMP){
 		} else 
 		if(mt == UMP_M2CVM){//64 bits MIDI 2.0 Channel Voice Messages
 		
-			uint8_t status = umpMess[0] >> 16 & 0xF0;
-			uint8_t channel = umpMess[0] >> 16 & 0xF;
-			uint8_t val1 = umpMess[0] >> 8 & 0xFF;
+			uint8_t status = (umpMess[0] >> 16) & 0xF0;
+			uint8_t channel = (umpMess[0] >> 16) & 0xF;
+			uint8_t val1 = (umpMess[0] >> 8) & 0xFF;
 			uint8_t val2 = umpMess[0] & 0xFF;
 			
 			switch(status){
@@ -533,11 +520,11 @@ void midi2Processor::processUMP(uint32_t UMP){
 					break;	
 				
 				case RPN: //RPN
-					//if(rpn != 0) rpn(group, channel, val1, val2, umpMess[1]); 
+					if(rpn != 0) rpn(group, channel, val1, val2, umpMess[1]); 
 					break;	
 				
 				case NRPN: //NRPN
-					//if(RPN != 0) RPN(group, channel, val1, val2, umpMess[1]); 
+					if(nrpn != 0) nrpn(group, channel, val1, val2, umpMess[1]); 
 					break;	
 				
 				case RPN_RELATIVE: //Relative RPN
@@ -601,20 +588,9 @@ void midi2Processor::sendDiscoveryRequest(uint8_t group, uint8_t ciVersion){
 	sendOutSysex(group,ver,4,2);
 	
 	//Capabilities
-	sysex[0]=0; 
-	#ifdef M2_ENABLE_PROTOCOL
-	sysex[0] += 0b10;
-	#endif
-	#ifdef M2_ENABLE_PROFILE
-	sysex[0] += 0b100;
-	#endif
-	#ifdef M2_ENABLE_PE
-	sysex[0] += 0b1000;
-	#endif 
-	sendOutSysex(group,sysex,1,2);
-	
-	setBytesFromNumbers(sysex, sysExMax, 0, 4);
-	sendOutSysex(group,sysex,4,3);
+	sysex[0]=ciSupport;
+	setBytesFromNumbers(sysex, sysExMax, 1, 4);
+	sendOutSysex(group,sysex,5,3);
 }
 
 void midi2Processor::sendNAK(uint8_t group, uint32_t _remoteMuid, uint8_t ciVersion){
@@ -637,7 +613,7 @@ void midi2Processor::setInvalidateMUID(uint8_t group, uint32_t _Muid, uint8_t ci
 
 
 
-#ifdef M2_ENABLE_IDREQ
+#ifndef M2_DISABLE_IDREQ
 void midi2Processor::sendIdentityRequest (uint8_t group){
 	if(sendOutSysex ==0) return;
 	uint8_t sysex[]={S7UNIVERSAL_NRT,MIDI_PORT,S7IDREQUEST,0x01};
