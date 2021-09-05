@@ -23,10 +23,10 @@
 
 void midi2Processor::processPESysex(uint8_t groupOffset, uint8_t s7Byte){
 	switch (ciType[groupOffset]){
-		case 0x30: //Inquiry: Property Exchange Capabilities
+		case MIDICI_PE_CAPABILITY: //Inquiry: Property Exchange Capabilities
 			if(sysexPos[groupOffset] == 13){
 				uint8_t sysex[14];
-				addCIHeader(0x31,sysex,0x01);
+				addCIHeader(MIDICI_PE_CAPABILITYREPLY,sysex,0x01);
 				setBytesFromNumbers(sysex, remoteMUID[groupOffset], 9, 4);
 				//Simultaneous Requests Supports
 				sysex[13]=numRequests;
@@ -36,13 +36,13 @@ void midi2Processor::processPESysex(uint8_t groupOffset, uint8_t s7Byte){
 			}
 			
 			break;
-		case 0x31: //Reply to Property Exchange Capabilities
+		case MIDICI_PE_CAPABILITYREPLY: //Reply to Property Exchange Capabilities
 			if(sysexPos[groupOffset] == 13 && recvPECapabilities != 0){
 				recvPECapabilities(groupOffset + groupStart,remoteMUID[groupOffset], s7Byte);
 			}
 			break;
 		
-		case 0x34: { // Inquiry: Get Property Data
+		case MIDICI_PE_GET: { // Inquiry: Get Property Data
 			uint8_t reqPosUsed;
 			if(sysexPos[groupOffset] >= 13){
 					reqPosUsed=getPERequestId(groupOffset, s7Byte);
@@ -82,7 +82,7 @@ void midi2Processor::processPESysex(uint8_t groupOffset, uint8_t s7Byte){
 			break;
 			
 		}
-		case 0x35: // Reply To Get Property Data - Needs Work!
+		case MIDICI_PE_GETREPLY: // Reply To Get Property Data - Needs Work!
 			/*uint8_t reqPosUsed;
 			if(sysexPos[groupOffset] >= 13){
 					reqPosUsed=getPERequestId(groupOffset, s7Byte); //Should this use the same pe Header structs?? / reqId's may mismatch here
@@ -216,7 +216,7 @@ void midi2Processor::processPESysex(uint8_t groupOffset, uint8_t s7Byte){
 			break;
 			
 			
-		case 0x36: {// Inquiry: Set Property Data
+		case MIDICI_PE_SET: {// Inquiry: Set Property Data
 			uint8_t reqPosUsed;
 			if(sysexPos[groupOffset] >= 13){
 					reqPosUsed=getPERequestId(groupOffset, s7Byte);
@@ -294,20 +294,14 @@ void midi2Processor::processPESysex(uint8_t groupOffset, uint8_t s7Byte){
 uint8_t midi2Processor::getPERequestId(uint8_t groupOffset, uint8_t s7Byte){
 	uint8_t reqPosUsed = 255;
 	if(sysexPos[groupOffset] == 13){ //Request Id
-		//Serial.println("  Set ReqId ");
 		for(uint8_t i =0;i<numRequests;i++){
-			//Serial.print("  - i ");Serial.println( i);
 			if(peRquestDetails[i].requestId == s7Byte){
-				//Serial.print("  - Found old pos ");Serial.println( i);
 				reqPosUsed = i;
 				break;
 			}else if(reqPosUsed==255 && peRquestDetails[i].requestId == 255){
-				//Serial.print("  - Found unsed Pos ");Serial.println( i);
 				peRquestDetails[i].requestId = s7Byte;
 				reqPosUsed = i;
 				break;
-			}else {
-				//Serial.print("  - exisiting ReqId ");Serial.println(peRquestDetails[i].requestId);
 			}
 		}
 		sys7IntBuffer[groupOffset][0] = (int)reqPosUsed;
@@ -317,7 +311,6 @@ uint8_t midi2Processor::getPERequestId(uint8_t groupOffset, uint8_t s7Byte){
 		}
 	}else {
 		reqPosUsed = sys7IntBuffer[groupOffset][0];
-		//Serial.print("  - preset requid ");Serial.println( reqPosUsed);
 	}
 	return reqPosUsed;
 }
@@ -387,7 +380,7 @@ void midi2Processor::processPERequestHeader(uint8_t groupOffset, uint8_t reqPosU
 void midi2Processor::sendPECapabilityRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t numSimulRequests){
 	if(sendOutSysex ==0) return;
 	uint8_t sysex[14];
-	addCIHeader(0x30,sysex,ciVersion);
+	addCIHeader(MIDICI_PE_CAPABILITY,sysex,ciVersion);
 	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
 	sysex[13] = numRequests;
 	sendOutSysex(group,sysex,14,0);
@@ -396,7 +389,7 @@ void midi2Processor::sendPECapabilityRequest(uint8_t group, uint32_t remoteMuid,
 void midi2Processor::sendPEGet(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, uint16_t headerLen, uint8_t* header){
 	if(sendOutSysex ==0) return;
 	uint8_t sysex[13];
-	addCIHeader(0x35,sysex,ciVersion);
+	addCIHeader(MIDICI_PE_GET,sysex,ciVersion);
 	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
 	sendOutSysex(group,sysex,13,1);
 	
@@ -413,7 +406,7 @@ void midi2Processor::sendPEGet(uint8_t group, uint32_t remoteMuid, uint8_t ciVer
 void midi2Processor::sendPEGetReply(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, uint16_t headerLen, uint8_t* header, int numberOfChunks, int numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
 	if(sendOutSysex ==0) return;
 	uint8_t sysex[13];
-	addCIHeader(0x35,sysex,ciVersion);
+	addCIHeader(MIDICI_PE_GETREPLY,sysex,ciVersion);
 	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
 	sendOutSysex(group,sysex,13,1);
 	

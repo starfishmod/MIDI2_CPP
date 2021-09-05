@@ -18,21 +18,46 @@
  * 
  * ********************************************************/
 
+#ifndef MC7_H
+#define MC7_H
 
+#include <string.h>
 
-#ifndef MIDI2_H
-#define MIDI2_H
+class mcoded7Decode{
 
+	private:
+		uint8_t dumpPos=0;
+		uint8_t dump[7];
+		
+		uint8_t fBit=0;
+		uint8_t cnt=0;
+		uint8_t bits=0;
 
-#include "utils.h"
-#include "messageCreate.h"
-#include "bytestreamUMP.h"
-#include "midi2Processor.h"
-#include "midi2PropertyExchange.h"
-#include "mcoded7.h"
-#include "midi2Profiles.h"
-
-
+	public:
+		
+		
+		mcoded7Decode();
+		
+		uint8_t availableBytes(){ return (dumpPos > 0);}
+		
+		uint8_t* getBytes();
+		
+		void reset(){
+			fBit=0; cnt=0; bits=0;dumpPos=0;
+		}
+		
+		void parseS7Byte(uint8_t s7Byte){		
+			if ((cnt % 8) == 0) {
+				reset();
+				bits = s7Byte;
+			} else {
+				fBit = ((bits >> (7 - (cnt % 8))) & 1) << 7;
+				dump[dumpPos++] = s7Byte | fBit;
+			}
+			cnt++;		
+		}
+	
+};
 
 #endif
 

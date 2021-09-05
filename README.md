@@ -45,8 +45,6 @@ Can be found on the [WIKI](https://github.com/starfishmod/MIDI2_CPP/wiki)
 * PE Set Methods
 * PE Handling of Mcoded7
 * Profile Specific Data Message
-* Send Invalid MUID
-* Sending JR Timestamp/Clock
 * Handling of Per Note Controllers
 * Universal SysEx handling (Other than Device ID and MIDI-CI)
 
@@ -162,7 +160,7 @@ void nak(uint8_t group, uint32_t remoteMuid){
 }
 
 void invalidMUID(uint8_t group, uint32_t remoteMuid, uint32_t terminateMuid){
-  MIDI2.groupBlockMUID = random(0xFFFFEFF);
+  MIDI2.m2procMUID = random(0xFFFFEFF);
   MIDI2.sendDiscoveryRequest(0,1);
 }
 
@@ -184,7 +182,7 @@ void setup()
 {
   randomSeed(analogRead(8));
   Serial.begin(31250);
-  MIDI2.groupBlockMUID = random(0xFFFFEFF);
+  MIDI2.m2procMUID = random(0xFFFFEFF);
   MIDI2.ciSupport=0b100;
   
   MIDI2.setRecvDiscovery(discovery);

@@ -96,7 +96,6 @@ midi2Processor::~midi2Processor() {
 	
 }
 
-
 void midi2Processor::addCIHeader(uint8_t _ciType, uint8_t* sysexHeader, uint8_t _ciVer){
 
 	sysexHeader[0]=S7UNIVERSAL_NRT;
@@ -104,9 +103,8 @@ void midi2Processor::addCIHeader(uint8_t _ciType, uint8_t* sysexHeader, uint8_t 
 	sysexHeader[2]=S7MIDICI;
 	sysexHeader[3]=_ciType;
 	sysexHeader[4]=_ciVer;
-	setBytesFromNumbers(sysexHeader, groupBlockMUID, 5, 4);
+	setBytesFromNumbers(sysexHeader, m2procMUID, 5, 4);
 }
-
 
 void midi2Processor::endSysex7(uint8_t groupOffset){
 	sysex7State[groupOffset] = false;
@@ -135,221 +133,247 @@ void midi2Processor::processSysEx(uint8_t groupOffset, uint8_t s7Byte){
 		}
 	}
 	
-	if(sysexMode[groupOffset] == S7UNIVERSAL_NRT){
-		processUniS7NRT(groupOffset, s7Byte);
-	}else{
-	//TODO  
+	if(s7Byte == S7UNIVERSAL_NRT || s7Byte == S7UNIVERSAL_RT){
+		if(sysexPos[groupOffset] == 1){
+			sysUniPort[groupOffset] =  s7Byte;
+			return;
+		}
+		
+		if(sysexPos[groupOffset] == 2){
+			sysUniNRTMode[groupOffset] =  s7Byte;
+			return;
+		}
 	}
 	
+	if(sysexMode[groupOffset] == S7UNIVERSAL_NRT){
+		
+		
+		switch(sysUniNRTMode[groupOffset]){
+			/*
+			case 0x00: // Sample DUMP
+			case 0x01:
+			case 0x02:
+			case 0x03:
+			case 0x05: // Sample Dump Extensions
+				break;
+			case 0x04: // MIDI Time Code
+				break;
+			*/
+			#ifndef M2_DISABLE_IDREQ  
+			case S7IDREQUEST:
+				processDeviceID(groupOffset, s7Byte);
+				break;
+			#endif
+			/*
+			case 0x07 : // File Dump
+				break;
+			case 0x08 : // MIDI Tuning Standard (Non-Real Time)
+				break;	
+			case 0x09 : // General MIDI
+				break;
+			case 0x0A : // Downloadable Sounds
+				break;
+			case 0x0B : // File Reference Message
+				break;
+			case 0x0C : // MIDI Visual Control
+				break;	
+			case 0x7B : // End of File
+				break;	
+			case 0x7C : // Wait
+				break;			
+			case 0x7D : // Cancel
+				break;	
+			case 0x7E : // NAK
+				break;
+			case 0x7F : // ACK
+				break;
+			*/
+			case S7MIDICI: // MIDI-CI
+				processMIDICI(groupOffset, s7Byte);
+				break;
+			
+		}
+	}else if(sysexMode[groupOffset] == S7UNIVERSAL_RT){
+		//This block of code represents potential future Universal SysEx Work
+		/*switch(sysUniNRTMode[groupOffset]){
+			
+			case 0x01: // MIDI Time Code
+				break
+			case 0x02: // MIDI Show Control
+				break;
+			case 0x03: // Notation Information
+				break;
+			case 0x04: // Device Control
+				break;	
+			case 0x05: // Real Time MTC Cueing
+				break;
+			case 0x06: // MIDI Machine Control Commands
+				break;
+			case 0x07 : // MIDI Machine Control Responses
+				break;
+			case 0x08 : // MIDI Tuning Standard (Real Time)
+				break;	
+			case 0x09 : // Controller Destination Setting (See GM2 Documentation)
+				break;
+			case 0x0A : // Key-based Instrument Control
+				break;	
+			case 0x0B : // Scalable Polyphony MIDI MIP Message
+				break;
+			case 0x0C : // Mobile Phone Control Message
+				break;	
+					
+		}*/
+	}else {
+		//TODO send out custom SysEx 7 byte
+	}
 	sysexPos[groupOffset]++;
 }
 
-
-//Proces all Non-Realtime Universal SysEx incl. MIDI-CI
-void midi2Processor::processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte){
-	if(sysexPos[groupOffset] == 1){
-		sysUniPort[groupOffset] =  s7Byte;
-		return;
+void midi2Processor::processMIDICI(uint8_t groupOffset, uint8_t s7Byte){
+	if(sysexPos[groupOffset] == 3){ 
+		ciType[groupOffset] =  s7Byte;
 	}
 	
-	if(sysexPos[groupOffset] == 2){
-		sysUniNRTMode[groupOffset] =  s7Byte;
-		return;
+	if(sysexPos[groupOffset] == 4){
+	ciVer[groupOffset] =  s7Byte;
+	} 
+	if(sysexPos[groupOffset] >= 5 && sysexPos[groupOffset] <= 8){
+		sys7CharBuffer[groupOffset][sysexPos[groupOffset]-5] = s7Byte;  
+	}
+	if(sysexPos[groupOffset] == 8){
+		remoteMUID[groupOffset] =  sys7CharBuffer[groupOffset][0] + ((int)sys7CharBuffer[groupOffset][1] << 7) + ((sys7CharBuffer[groupOffset][2] + 0L) << 14) + ((sys7CharBuffer[groupOffset][3] + 0L) << 21);
 	}
 	
-	switch(sysUniNRTMode[groupOffset]){
-		
-	#ifndef M2_DISABLE_IDREQ  
-	case S7IDREQUEST:
-		if(sysexPos[groupOffset] == 3 && s7Byte == 0x01){
-		//Identity Request - send a reply?
-		//Serial.println("  -Identity Request - send a reply");
-		uint8_t sysex[]={
-			S7UNIVERSAL_NRT,MIDI_PORT,S7IDREQUEST,0x02
-			,devId[0],devId[1],devId[2] //SyexId
-			,famId[0],famId[1] //family id
-			,modelId[0],modelId[1] //model id
-			,ver[0],ver[1],ver[2],ver[3] //version id
-		};
-		
-		if(sendOutSysex !=0) sendOutSysex(groupOffset + groupStart, sysex,15,0);
-		
-		}
-		if(sysexPos[groupOffset] == 3 && s7Byte == 0x02){
-			//Identity Reply
-			sys7CharBuffer[groupOffset][0] = s7Byte;
-		
-		}
-		if(sys7CharBuffer[groupOffset][0] == 0x02){
-			if(sysexPos[groupOffset] >= 4 && sysexPos[groupOffset] <= 14){
-				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-3] = s7Byte; 
-			}
-
-			if (sysexPos[groupOffset] == 14 && sendOutIdResponse != 0){
-				uint8_t manuIdR[3] = {sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3]};
-				uint8_t famIdR[2] = {sys7CharBuffer[groupOffset][4], sys7CharBuffer[groupOffset][5]};
-				uint8_t modelIdR[2] = {sys7CharBuffer[groupOffset][6], sys7CharBuffer[groupOffset][7]};
-				uint8_t verR[4] = {sys7CharBuffer[groupOffset][8], sys7CharBuffer[groupOffset][9], sys7CharBuffer[groupOffset][10], sys7CharBuffer[groupOffset][11]};
-				sendOutIdResponse(manuIdR, famIdR, modelIdR, verR);
-			}
-		}
-		break;
-	#endif
+	if(sysexPos[groupOffset] >= 9 && sysexPos[groupOffset] <= 12){
+		sys7CharBuffer[groupOffset][sysexPos[groupOffset]-9] = s7Byte;
+	}
+	if(sysexPos[groupOffset] == 12){
+		destMuid[groupOffset] =  sys7CharBuffer[groupOffset][0] + ((int)sys7CharBuffer[groupOffset][1] << 7) + ((sys7CharBuffer[groupOffset][2] + 0L) << 14) + ((sys7CharBuffer[groupOffset][3] + 0L) << 21);
+	}
 	
-	case S7MIDICI: // MIDI-CI
-		
-		if(sysexPos[groupOffset] == 3){ 
-			ciType[groupOffset] =  s7Byte;
-		}
-		
-		if(sysexPos[groupOffset] == 4){
-		ciVer[groupOffset] =  s7Byte;
-		} 
-		if(sysexPos[groupOffset] >= 5 && sysexPos[groupOffset] <= 8){
-			sys7CharBuffer[groupOffset][sysexPos[groupOffset]-5] = s7Byte;  
-		}
-		if(sysexPos[groupOffset] == 8){
-			remoteMUID[groupOffset] =  sys7CharBuffer[groupOffset][0] + ((int)sys7CharBuffer[groupOffset][1] << 7) + ((sys7CharBuffer[groupOffset][2] + 0L) << 14) + ((sys7CharBuffer[groupOffset][3] + 0L) << 21);
-		}
-		
-		if(sysexPos[groupOffset] >= 9 && sysexPos[groupOffset] <= 12){
-			sys7CharBuffer[groupOffset][sysexPos[groupOffset]-9] = s7Byte;
-		}
-		if(sysexPos[groupOffset] == 12){
-			destMuid[groupOffset] =  sys7CharBuffer[groupOffset][0] + ((int)sys7CharBuffer[groupOffset][1] << 7) + ((sys7CharBuffer[groupOffset][2] + 0L) << 14) + ((sys7CharBuffer[groupOffset][3] + 0L) << 21);
-		}
-		
-		if(sysexPos[groupOffset] >= 12 && destMuid[groupOffset] != groupBlockMUID && destMuid[groupOffset] != M2_CI_BROADCAST){
-			return; //Not for this device
-		}
-		
-		//break up each Process based on ciType
-		switch (ciType[groupOffset]){
-			case MIDICI_DISCOVERY: //Discovery Request'
-				//Serial.print("  - Discovery Request ");Serial.print(sysexPos[groupOffset]);Serial.print(" ");Serial.println(s7Byte,HEX);
-				if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 28){
-					sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
+	if(sysexPos[groupOffset] >= 12 && destMuid[groupOffset] != m2procMUID && destMuid[groupOffset] != M2_CI_BROADCAST){
+		return; //Not for this device
+	}
+	
+	//break up each Process based on ciType
+	switch (ciType[groupOffset]){
+		case MIDICI_DISCOVERY: //Discovery Request'
+			//Serial.print("  - Discovery Request ");Serial.print(sysexPos[groupOffset]);Serial.print(" ");Serial.println(s7Byte,HEX);
+			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 28){
+				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
+			}
+			if(sysexPos[groupOffset]==28){
+				//Serial.println("  - Discovery Request ");
+				if (recvDiscoveryRequest != 0){
+					uint8_t manuIdR[3] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2]};
+					uint8_t famIdR[2] = {sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
+					uint8_t modelIdR[2] = {sys7CharBuffer[groupOffset][5], sys7CharBuffer[groupOffset][6]};
+					uint8_t verR[4] = {sys7CharBuffer[groupOffset][7], sys7CharBuffer[groupOffset][8], sys7CharBuffer[groupOffset][9], sys7CharBuffer[groupOffset][10]};
+					recvDiscoveryRequest(
+						groupOffset + groupStart,
+						remoteMUID[groupOffset],
+						ciVer[groupOffset],
+						manuIdR,
+						famIdR,
+						modelIdR,
+						verR,
+						sys7CharBuffer[groupOffset][11],
+						sys7CharBuffer[groupOffset][12] + (sys7CharBuffer[groupOffset][13] << 7) + ((sys7CharBuffer[groupOffset][14] + 0L) << 14) + ((sys7CharBuffer[groupOffset][15] + 0L) << 21)
+					);
 				}
-				if(sysexPos[groupOffset]==28){
-					//Serial.println("  - Discovery Request ");
-					if (recvDiscoveryRequest != 0){
-						uint8_t manuIdR[3] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2]};
-						uint8_t famIdR[2] = {sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-						uint8_t modelIdR[2] = {sys7CharBuffer[groupOffset][5], sys7CharBuffer[groupOffset][6]};
-						uint8_t verR[4] = {sys7CharBuffer[groupOffset][7], sys7CharBuffer[groupOffset][8], sys7CharBuffer[groupOffset][9], sys7CharBuffer[groupOffset][10]};
-						recvDiscoveryRequest(
-							groupOffset + groupStart,
-							remoteMUID[groupOffset],
-							ciVer[groupOffset],
-							manuIdR,
-							famIdR,
-							modelIdR,
-							verR,
-							sys7CharBuffer[groupOffset][11],
-							sys7CharBuffer[groupOffset][12] + (sys7CharBuffer[groupOffset][13] << 7) + ((sys7CharBuffer[groupOffset][14] + 0L) << 14) + ((sys7CharBuffer[groupOffset][15] + 0L) << 21)
+				
+				//Send Discovery Reply
+				if(sendOutSysex ==0) return;
+				
+				uint8_t sysex[13];
+				addCIHeader(MIDICI_DISCOVERYREPLY,sysex,0x01);
+				setBytesFromNumbers(sysex, remoteMUID[groupOffset], 9, 4);
+				
+				sendOutSysex(groupOffset + groupStart,sysex,13,1);
+				sendOutSysex(groupOffset + groupStart,sysexId,3,2);
+				sendOutSysex(groupOffset + groupStart,famId,2,2);
+				sendOutSysex(groupOffset + groupStart,modelId,2,2);
+				sendOutSysex(groupOffset + groupStart,ver,4,2);
+				
+				//Capabilities
+				sysex[0]=ciSupport; 					
+				setBytesFromNumbers(sysex, sysExMax, 1, 4);
+				sendOutSysex(groupOffset + groupStart,sysex,5,3);
+				
+			}
+
+			break;
+		case MIDICI_DISCOVERYREPLY: //Discovery Reply'
+			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 28){
+				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
+			}
+			if(sysexPos[groupOffset]==28){
+				if (recvDiscoveryReply != 0){
+					uint8_t manuIdR[3] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2]};
+					uint8_t famIdR[2] = {sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
+					uint8_t modelIdR[2] = {sys7CharBuffer[groupOffset][5], sys7CharBuffer[groupOffset][6]};
+					uint8_t verR[4] = {sys7CharBuffer[groupOffset][7], sys7CharBuffer[groupOffset][8], sys7CharBuffer[groupOffset][9], sys7CharBuffer[groupOffset][10]};
+					recvDiscoveryReply(
+						groupOffset + groupStart,
+						remoteMUID[groupOffset],
+						ciVer[groupOffset],
+						manuIdR,
+						famIdR,
+						modelIdR,
+						verR,
+						sys7CharBuffer[groupOffset][11],
+						sys7CharBuffer[groupOffset][12] + (sys7CharBuffer[groupOffset][13] << 7) + (sys7CharBuffer[groupOffset][14] << 14) + (sys7CharBuffer[groupOffset][15] << 21)
 						);
-					}
-					
-					//Send Discovery Reply
-					if(sendOutSysex ==0) return;
-					
-					uint8_t sysex[13];
-					addCIHeader(MIDICI_DISCOVERYREPLY,sysex,0x01);
-					setBytesFromNumbers(sysex, remoteMUID[groupOffset], 9, 4);
-					
-					sendOutSysex(groupOffset + groupStart,sysex,13,1);
-					sendOutSysex(groupOffset + groupStart,devId,3,2);
-					sendOutSysex(groupOffset + groupStart,famId,2,2);
-					sendOutSysex(groupOffset + groupStart,modelId,2,2);
-					sendOutSysex(groupOffset + groupStart,ver,4,2);
-					
-					//Capabilities
-					sysex[0]=ciSupport; 					
-					setBytesFromNumbers(sysex, sysExMax, 1, 4);
-					sendOutSysex(groupOffset + groupStart,sysex,5,3);
-					
 				}
-
-				break;
-			case MIDICI_DISCOVERYREPLY: //Discovery Reply'
-				if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 28){
-					sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
-				}
-				if(sysexPos[groupOffset]==28){
-					if (recvDiscoveryReply != 0){
-						uint8_t manuIdR[3] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2]};
-						uint8_t famIdR[2] = {sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-						uint8_t modelIdR[2] = {sys7CharBuffer[groupOffset][5], sys7CharBuffer[groupOffset][6]};
-						uint8_t verR[4] = {sys7CharBuffer[groupOffset][7], sys7CharBuffer[groupOffset][8], sys7CharBuffer[groupOffset][9], sys7CharBuffer[groupOffset][10]};
-						recvDiscoveryReply(
-							groupOffset + groupStart,
-							remoteMUID[groupOffset],
-							ciVer[groupOffset],
-							manuIdR,
-							famIdR,
-							modelIdR,
-							verR,
-							sys7CharBuffer[groupOffset][11],
-							sys7CharBuffer[groupOffset][12] + (sys7CharBuffer[groupOffset][13] << 7) + (sys7CharBuffer[groupOffset][14] << 14) + (sys7CharBuffer[groupOffset][15] << 21)
-							);
-					}
-				}
-				break;
-				
-			case MIDICI_INVALIDATEMUID: //MIDI-CI Invalidate MUID Message
-				if(sysexPos[groupOffset] == 13){
-					destMuid[groupOffset] = 0;
-				}
+			}
+			break;
 			
-				if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 16){
-					destMuid[groupOffset] =  destMuid[groupOffset] + (s7Byte << (7 * (sysexPos[groupOffset] - 13)));
-				}
-			
-				if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
-					recvInvalidateMUID(groupOffset + groupStart,remoteMUID[groupOffset], destMuid[groupOffset]);
-				}
-				break;	
-			case MIDICI_NAK: //MIDI-CI NAK
-				if (recvNAK != 0){
-					recvNAK(groupOffset + groupStart,remoteMUID[groupOffset]);
-				}
-				break;
-				
-			#ifndef M2_DISABLE_PROTOCOL
-			#endif     
-			
-			#ifndef M2_DISABLE_PROFILE  
-			case 0x20: //Profile Inquiry
-			case 0x21: //Reply to Profile Inquiry
-			case 0x22: //Set Profile On Message
-			case 0x23: //Set Profile Off Message	
-			case 0x24: //Set Profile Enabled Message  
-			case 0x25: //Set Profile Disabled Message
-				processProfileSysex(groupOffset, s7Byte);
-				break;   
-			#endif   
-			
-			
-			#ifndef M2_DISABLE_PE 
-			case 0x30: //Inquiry: Property Exchange Capabilities
-			case 0x31: //Reply to Property Exchange Capabilities			
-			case 0x34:  // Inquiry: Get Property Data
-			case 0x35: // Reply To Get Property Data - Needs Work!
-			case 0x36: // Inquiry: Set Property Data
-				processPESysex(groupOffset, s7Byte);
-				break;
-			#endif   
+		case MIDICI_INVALIDATEMUID: //MIDI-CI Invalidate MUID Message
+			if(sysexPos[groupOffset] == 13){
+				destMuid[groupOffset] = 0;
+			}
 		
-		}
+			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 16){
+				destMuid[groupOffset] =  destMuid[groupOffset] + (s7Byte << (7 * (sysexPos[groupOffset] - 13)));
+			}
 		
-		break;
-	
+			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
+				recvInvalidateMUID(groupOffset + groupStart,remoteMUID[groupOffset], destMuid[groupOffset]);
+			}
+			break;	
+		case MIDICI_NAK: //MIDI-CI NAK
+			if (recvNAK != 0){
+				recvNAK(groupOffset + groupStart,remoteMUID[groupOffset]);
+			}
+			break;
+			
+		#ifndef M2_DISABLE_PROTOCOL
+		#endif     
+		
+		#ifndef M2_DISABLE_PROFILE  
+		case 0x20: //Profile Inquiry
+		case 0x21: //Reply to Profile Inquiry
+		case 0x22: //Set Profile On Message
+		case 0x23: //Set Profile Off Message	
+		case 0x24: //Set Profile Enabled Message  
+		case 0x25: //Set Profile Disabled Message
+			processProfileSysex(groupOffset, s7Byte);
+			break;   
+		#endif   
+		
+		
+		#ifndef M2_DISABLE_PE 
+		case 0x30: //Inquiry: Property Exchange Capabilities
+		case 0x31: //Reply to Property Exchange Capabilities			
+		case 0x34:  // Inquiry: Get Property Data
+		case 0x35: // Reply To Get Property Data - Needs Work!
+		case 0x36: // Inquiry: Set Property Data
+			processPESysex(groupOffset, s7Byte);
+			break;
+		#endif   
 	
 	}
 }
-
-
-
 
 void midi2Processor::processUMP(uint32_t UMP){
 	umpMess[messPos] = UMP;
@@ -380,10 +404,13 @@ void midi2Processor::processUMP(uint32_t UMP){
 				break;
 			#ifndef M2_DISABLE_JR	
 				case 0b1: // JR Clock Message 
-				if(jrClock != 0) jrClock(group, timing);
-				break;
+					if(recvJRClock != 0) recvJRClock(group, timing);
+					break;
 				case 0b10: //JR Timestamp Message
-				//??? Message out or attach to next message?
+					//??? Message out or attach to next message?
+					if(recvJRTimeStamp != 0) recvJRTimeStamp(group, timing);
+					break;
+
 				
 				break;
 			#endif
@@ -528,10 +555,10 @@ void midi2Processor::processUMP(uint32_t UMP){
 					break;	
 				
 				case RPN_RELATIVE: //Relative RPN
-					//if(RRPN != 0) RRPN(group, channel, val1, val2, umpMess[1]/*twoscomplement*/); 
+					if(rrpn != 0) rrpn(group, channel, val1, val2, (int32_t)umpMess[1]/*twoscomplement*/); 
 					break;	
 				case NRPN_RELATIVE: //Relative NRPN
-					//if(RNPN != 0) RNPN(group, channel, val1, val2, umpMess[1]/*twoscomplement*/); 
+					if(rnrpn != 0) rnrpn(group, channel, val1, val2, (int32_t)umpMess[1]/*twoscomplement*/); 
 					break;
 				
 				case PROGRAM_CHANGE: //Program Change Message
@@ -545,18 +572,18 @@ void midi2Processor::processUMP(uint32_t UMP){
 					break;	
 					
 				case PITCH_BEND_PERNOTE: //Per Note PitchBend 6
-					//if(midiNoteOn != 0) channelPressure(group, channel, umpMess[1]); 
+					//if(midiNoteOn != 0) channelPressure(group, channel, val1, umpMess[1]); 
 					break;		
 				case NRPN_PERNOTE: //Assignable Per-Note Controller 1
-					//if(midiNoteOn != 0) channelPressure(group, channel, umpMess[1]); 
+					//if(midiNoteOn != 0) channelPressure(group, channel, val1, umpMess[1]); 
 					break;	
 					
 				case RPN_PERNOTE: //Registered Per-Note Controller 0 
-					//if(midiNoteOn != 0) channelPressure(group, channel, umpMess[1]); 
+					//if(midiNoteOn != 0) channelPressure(group, channel, val1, umpMess[1]); 
 					break;	
 					
 				case PERNOTE_MANAGE: //Per-Note Management Message
-					//if(midiNoteOn != 0) channelPressure(group, channel, umpMess[1]); 
+					//if(midiNoteOn != 0) channelPressure(group, channel, val1, umpMess[1]); 
 					break;	
 					
 			}
@@ -582,7 +609,7 @@ void midi2Processor::sendDiscoveryRequest(uint8_t group, uint8_t ciVersion){
 	addCIHeader(MIDICI_DISCOVERY,sysex,ciVersion);
 	setBytesFromNumbers(sysex, M2_CI_BROADCAST, 9, 4);
 	sendOutSysex(group,sysex,13,1);
-	sendOutSysex(group,devId,3,2);
+	sendOutSysex(group,sysexId,3,2);
 	sendOutSysex(group,famId,2,2);
 	sendOutSysex(group,modelId,2,2);
 	sendOutSysex(group,ver,4,2);
@@ -601,16 +628,15 @@ void midi2Processor::sendNAK(uint8_t group, uint32_t _remoteMuid, uint8_t ciVers
 	sendOutSysex(group,sysex,13,0);
 }
 
-void midi2Processor::setInvalidateMUID(uint8_t group, uint32_t _Muid, uint8_t ciVersion){
+void midi2Processor::sendInvalidateMUID(uint8_t group, uint32_t terminateMuid, uint8_t ciVersion){
 	if(sendOutSysex ==0) return;
 	uint8_t sysex[13];
 	addCIHeader(MIDICI_INVALIDATEMUID,sysex,ciVersion);
 	setBytesFromNumbers(sysex, M2_CI_BROADCAST, 9, 4);
 	sendOutSysex(group,sysex,13,1);
-	setBytesFromNumbers(sysex, _Muid, 0, 4);
+	setBytesFromNumbers(sysex, terminateMuid, 0, 4);
 	sendOutSysex(group,sysex,4,3);
 }
-
 
 
 #ifndef M2_DISABLE_IDREQ
@@ -619,7 +645,39 @@ void midi2Processor::sendIdentityRequest (uint8_t group){
 	uint8_t sysex[]={S7UNIVERSAL_NRT,MIDI_PORT,S7IDREQUEST,0x01};
 	sendOutSysex(group,sysex,4,0);
 }
+void midi2Processor::processDeviceID(uint8_t groupOffset, uint8_t s7Byte){
+	if(sysexPos[groupOffset] == 3 && s7Byte == 0x01){
+		//Identity Request - send a reply?
+		//Serial.println("  -Identity Request - send a reply");
+		uint8_t sysex[]={
+			S7UNIVERSAL_NRT,MIDI_PORT,S7IDREQUEST,0x02
+			,sysexId[0],sysexId[1],sysexId[2] //SyexId
+			,famId[0],famId[1] //family id
+			,modelId[0],modelId[1] //model id
+			,ver[0],ver[1],ver[2],ver[3] //version id
+		};
+		
+		if(sendOutSysex !=0) sendOutSysex(groupOffset + groupStart, sysex,15,0);
+		
+	}
+	if(sysexPos[groupOffset] == 3 && s7Byte == 0x02){
+		//Identity Reply
+		sys7CharBuffer[groupOffset][0] = s7Byte;
+	}
+	if(sys7CharBuffer[groupOffset][0] == 0x02){
+		if(sysexPos[groupOffset] >= 4 && sysexPos[groupOffset] <= 14){
+			sys7CharBuffer[groupOffset][sysexPos[groupOffset]-3] = s7Byte; 
+		}
 
+		if (sysexPos[groupOffset] == 14 && sendOutIdResponse != 0){
+			uint8_t manuIdR[3] = {sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3]};
+			uint8_t famIdR[2] = {sys7CharBuffer[groupOffset][4], sys7CharBuffer[groupOffset][5]};
+			uint8_t modelIdR[2] = {sys7CharBuffer[groupOffset][6], sys7CharBuffer[groupOffset][7]};
+			uint8_t verR[4] = {sys7CharBuffer[groupOffset][8], sys7CharBuffer[groupOffset][9], sys7CharBuffer[groupOffset][10], sys7CharBuffer[groupOffset][11]};
+			sendOutIdResponse(manuIdR, famIdR, modelIdR, verR);
+		}
+	}
+}
 #endif
 
 

@@ -18,11 +18,9 @@
  * 
  * ********************************************************/
 #ifdef ARDUINO
-    #define SERIAL_PRINT  Serial.print
     #include <stdint.h>
     #include <stdlib.h>
 #else
-    #define SERIAL_PRINT  printf
     #include <cstdint>
 #endif
 
@@ -63,6 +61,8 @@ class midi2Processor{
     void (*controlChange)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value) = 0;
     void (*rpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, uint32_t value) = 0;
     void (*nrpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, uint32_t value) = 0;
+    void (*rnrpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, int32_t value) = 0;
+    void (*rrpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, int32_t value) = 0;
     void (*polyPressure)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure) = 0;
     void (*channelPressure)(uint8_t group, uint8_t channel, uint32_t pressure) = 0;
     void (*pitchBend)(uint8_t group, uint8_t channel, uint32_t value) = 0;
@@ -88,14 +88,14 @@ class midi2Processor{
     void endSysex7(uint8_t groupOffset);
     void startSysex7(uint8_t groupOffset);
     void processSysEx(uint8_t groupOffset, uint8_t s7Byte);
-    void processUniS7NRT(uint8_t groupOffset, uint8_t s7Byte);
+    void processMIDICI(uint8_t groupOffset, uint8_t s7Byte);
    
     
   public:
 	//This Device's Data
-	uint32_t groupBlockMUID = 0; 
+	uint32_t m2procMUID = 0; 
 	uint8_t ciSupport = 0; 
-	uint8_t devId[3] = {0x7D , 0, 0};
+	uint8_t sysexId[3] = {0x7D , 0, 0};
     uint8_t famId[2];
     uint8_t modelId[2];
     uint8_t ver[4]; 
@@ -108,7 +108,8 @@ class midi2Processor{
     void processUMP(uint32_t UMP);
     void sendDiscoveryRequest(uint8_t group, uint8_t ciVersion);
 	void sendNAK(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion);
-	void setInvalidateMUID(uint8_t group, uint32_t _Muid, uint8_t ciVersion);
+	void sendInvalidateMUID(uint8_t group, uint32_t terminateMuid, uint8_t ciVersion);
+	
 
 	//-----------------------Handlers ---------------------------
 	inline void setNoteOff(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData)){ midiNoteOff = fptr; }
@@ -116,15 +117,17 @@ class midi2Processor{
 	inline void setControlChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value)){ controlChange = fptr; }
 	inline void setRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){ rpn = fptr; }
 	inline void setNRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){ nrpn = fptr; }
+	inline void setRelativeNRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, int32_t value/*twoscomplement*/)){ rnrpn = fptr; }
+	inline void setRelativeRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, int32_t value/*twoscomplement*/)){ rrpn = fptr; }
 	inline void setPolyPressure(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure)){ polyPressure = fptr; }
 	inline void setChannelPressure(void (*fptr)(uint8_t group, uint8_t channel, uint32_t pressure)){ channelPressure = fptr; }
 	inline void setPitchBend(void (*fptr)(uint8_t group, uint8_t channel, uint32_t value)){ pitchBend = fptr; }
 	inline void setProgramChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t program, bool bankValid, uint8_t bank, uint8_t index)){ programChange = fptr; }
-	//TODO relative, per note etc
+	//TODO per note etc
 
-	inline void setTimingCode(void (*fptr)(uint8_t group,uint8_t timeCode)){ timingCode = fptr; }
+	inline void setTimingCode(void (*fptr)(uint8_t group, uint8_t timeCode)){ timingCode = fptr; }
 	inline void setSongSelect(void (*fptr)(uint8_t group,uint8_t song)){ songSelect = fptr; }
-	inline void setSongPositionPointer(void (*fptr)(uint8_t group,uint16_t positio)){ songPositionPointer = fptr; }
+	inline void setSongPositionPointer(void (*fptr)(uint8_t group,uint16_t position)){ songPositionPointer = fptr; }
 	inline void setTuneRequest(void (*fptr)(uint8_t group)){ tuneRequest = fptr; }
 	inline void setTimingClock(void (*fptr)(uint8_t group)){ timingClock = fptr; }
 	inline void setSeqStart(void (*fptr)(uint8_t group)){ seqStart = fptr; }
@@ -138,23 +141,25 @@ class midi2Processor{
 	inline void setRecvNAK(void (*fptr)(uint8_t group, uint32_t remoteMuid)){ recvNAK = fptr;}
 	inline void setRecvInvalidateMUID(void (*fptr)(uint8_t group, uint32_t remoteMuid, uint32_t terminateMuid)){ recvInvalidateMUID = fptr;}
 
-
 	
 #ifndef M2_DISABLE_IDREQ
   private:
-	void (*sendOutIdResponse)(uint8_t* devId, uint8_t* famId, uint8_t* modelId, uint8_t* ver) = 0;
+	void (*sendOutIdResponse)(uint8_t* sysexId, uint8_t* famId, uint8_t* modelId, uint8_t* ver) = 0;
   public:
 	void sendIdentityRequest (uint8_t group);
-    inline void setHandleIdResponse(void (*fptr)(uint8_t* devId, uint8_t* famId, uint8_t* modelId, uint8_t* ver)){ sendOutIdResponse = fptr;}
+    inline void setHandleIdResponse(void (*fptr)(uint8_t* sysexId, uint8_t* famId, uint8_t* modelId, uint8_t* ver)){ sendOutIdResponse = fptr;}
 #endif
 
 
 
 #ifndef M2_DISABLE_JR
   private:
-	void (*jrClock)(uint8_t group, uint16_t timing) = 0;
+	void (*recvJRClock)(uint8_t group, uint16_t timing) = 0;
+	void (*recvJRTimeStamp)(uint8_t group, uint16_t timestamp) = 0;
+	void processDeviceID(uint8_t groupOffset, uint8_t s7Byte);
   public:
-	inline void setJrClock(void (*fptr)(uint8_t group,uint16_t timing));
+	inline void setJRClock(void (*fptr)(uint8_t group,uint16_t timing)){ recvJRClock = fptr;}
+	inline void setJRTimeStamp(void (*fptr)(uint8_t group,uint16_t timestamp)){ recvJRTimeStamp = fptr;}
 #endif
 
 
