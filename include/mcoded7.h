@@ -21,6 +21,8 @@
 #ifndef MC7_H
 #define MC7_H
 
+#include <string.h>
+
 #ifdef ARDUINO
    #include <stdint.h>
 #else
