@@ -2,23 +2,9 @@
 #include "../include/midi2Processor.h"
 #include "../include/utils.h"
 
-
-
-
 #ifndef M2_DISABLE_PE
 
-
-
 #include <string.h>
-
-#ifdef ARDUINO
-    #define SERIAL_PRINT  Serial.print
-    #include <stdint.h>
-#else
-    #define SERIAL_PRINT  printf
-    #include <stdio.h>
-    #include <cstdint>
-#endif
 
 
 void midi2Processor::processPESysex(uint8_t groupOffset, uint8_t s7Byte){
@@ -26,7 +12,7 @@ void midi2Processor::processPESysex(uint8_t groupOffset, uint8_t s7Byte){
 		case MIDICI_PE_CAPABILITY: //Inquiry: Property Exchange Capabilities
 			if(sysexPos[groupOffset] == 13){
 				uint8_t sysex[14];
-				addCIHeader(MIDICI_PE_CAPABILITYREPLY,sysex,0x01);
+				addCIHeader(MIDICI_PE_CAPABILITYREPLY, sysex, 0x01);
 				setBytesFromNumbers(sysex, remoteMUID[groupOffset], 9, 4);
 				//Simultaneous Requests Supports
 				sysex[13]=numRequests;
@@ -65,7 +51,6 @@ void midi2Processor::processPESysex(uint8_t groupOffset, uint8_t s7Byte){
 				sys7IntBuffer[groupOffset][3] = 0; //bufferPos
 			}
 			
-			
 			if(sysexPos[groupOffset] >= 16 && sysexPos[groupOffset] <= 15 + sys7IntBuffer[groupOffset][1]){
 				processPERequestHeader(groupOffset, reqPosUsed, s7Byte);
 			}
@@ -74,13 +59,8 @@ void midi2Processor::processPESysex(uint8_t groupOffset, uint8_t s7Byte){
 				if(recvPEGetInquiry != 0) recvPEGetInquiry(groupOffset + groupStart, remoteMUID[groupOffset], peRquestDetails[reqPosUsed]);	
 				cleanupRequestId(peRquestDetails[reqPosUsed].requestId); 
 			}
-			
-			
-			
-			
 		
 			break;
-			
 		}
 		case MIDICI_PE_GETREPLY: // Reply To Get Property Data - Needs Work!
 			/*uint8_t reqPosUsed;

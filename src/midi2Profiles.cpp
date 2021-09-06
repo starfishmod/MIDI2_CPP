@@ -9,7 +9,6 @@
 #ifdef ARDUINO
     #include <stdint.h>
 #else
-    #include <stdio.h>
     #include <cstdint>
 #endif
 

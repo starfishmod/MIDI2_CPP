@@ -21,11 +21,8 @@
 #include "../include/midi2Processor.h"
 #include "../include/utils.h"
  
+#include <stdlib.h>
 
-
-#ifdef ARDUINO
-    #include <stdlib.h>
-#endif
 
 midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t numRequestsTotal){
 	groupStart = grStart;

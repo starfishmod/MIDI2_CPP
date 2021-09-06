@@ -25,7 +25,7 @@
 #ifdef ARDUINO
    #include <stdint.h>
 #else
-    
+    #include <cstdint>
 #endif
 
 uint32_t mt0NOOP(uint8_t group);
