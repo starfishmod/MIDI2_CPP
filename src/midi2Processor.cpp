@@ -45,9 +45,11 @@ midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t num
 		peRquestDetails[i].requestId = 255;
 		memset(peRquestDetails[i].resource,0,PE_HEAD_BUFFERLEN);
 		memset(peRquestDetails[i].resId,0,PE_HEAD_BUFFERLEN);
+		memset(peRquestDetails[i].subscribeId,0,PE_HEAD_BUFFERLEN);
 		peRquestDetails[i].offset=-1;
 		peRquestDetails[i].limit=-1;
 		peRquestDetails[i].status=-1;
+		peRquestDetails[i].command=0;
 
 	}
 	#endif
@@ -74,6 +76,8 @@ midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t num
 		#endif
 		);
 	}
+	
+	debug("MIDICI Inst loaded");
 }
 
 midi2Processor::~midi2Processor() { 
@@ -130,21 +134,21 @@ void midi2Processor::processSysEx(uint8_t groupOffset, uint8_t s7Byte){
 		}
 	}
 	
-	if(s7Byte == S7UNIVERSAL_NRT || s7Byte == S7UNIVERSAL_RT){
+	if(sysexMode[groupOffset] == S7UNIVERSAL_NRT || sysexMode[groupOffset] == S7UNIVERSAL_RT){
 		if(sysexPos[groupOffset] == 1){
 			sysUniPort[groupOffset] =  s7Byte;
+			sysexPos[groupOffset]++;
 			return;
 		}
 		
 		if(sysexPos[groupOffset] == 2){
 			sysUniNRTMode[groupOffset] =  s7Byte;
+			sysexPos[groupOffset]++;
 			return;
 		}
 	}
 	
-	if(sysexMode[groupOffset] == S7UNIVERSAL_NRT){
-		
-		
+	if(sysexMode[groupOffset] == S7UNIVERSAL_NRT){		
 		switch(sysUniNRTMode[groupOffset]){
 			/*
 			case 0x00: // Sample DUMP
@@ -249,18 +253,19 @@ void midi2Processor::processMIDICI(uint8_t groupOffset, uint8_t s7Byte){
 	}
 	
 	if(sysexPos[groupOffset] >= 12 && destMuid[groupOffset] != m2procMUID && destMuid[groupOffset] != M2_CI_BROADCAST){
+		//Serial.println("  -> Not for this device ");
 		return; //Not for this device
 	}
 	
 	//break up each Process based on ciType
 	switch (ciType[groupOffset]){
 		case MIDICI_DISCOVERY: //Discovery Request'
-			//Serial.print("  - Discovery Request ");Serial.print(sysexPos[groupOffset]);Serial.print(" ");Serial.println(s7Byte,HEX);
+			//debug("  - Discovery Request ");//debug(sysexPos[groupOffset]);debug(s7Byte);
 			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 28){
 				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
 			}
 			if(sysexPos[groupOffset]==28){
-				//Serial.println("  - Discovery Request ");
+				//debug("  - Discovery Request 28 ");
 				if (recvDiscoveryRequest != 0){
 					uint8_t manuIdR[3] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2]};
 					uint8_t famIdR[2] = {sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
@@ -280,7 +285,9 @@ void midi2Processor::processMIDICI(uint8_t groupOffset, uint8_t s7Byte){
 				}
 				
 				//Send Discovery Reply
+				//debug("  -> Discovery Reply ");
 				if(sendOutSysex ==0) return;
+				//debug("  -> Discovery Reply 2");
 				
 				uint8_t sysex[13];
 				addCIHeader(MIDICI_DISCOVERYREPLY,sysex,0x01);
@@ -354,6 +361,7 @@ void midi2Processor::processMIDICI(uint8_t groupOffset, uint8_t s7Byte){
 		case 0x23: //Set Profile Off Message	
 		case 0x24: //Set Profile Enabled Message  
 		case 0x25: //Set Profile Disabled Message
+		case 0x2F: //ProfileSpecific Data
 			processProfileSysex(groupOffset, s7Byte);
 			break;   
 		#endif   
@@ -365,6 +373,10 @@ void midi2Processor::processMIDICI(uint8_t groupOffset, uint8_t s7Byte){
 		case 0x34:  // Inquiry: Get Property Data
 		case 0x35: // Reply To Get Property Data - Needs Work!
 		case 0x36: // Inquiry: Set Property Data
+		case 0x37: // Reply To Inquiry: Set Property Data
+		case 0x38: // Inquiry: Subscribe Property Data
+		case 0x39: // Reply To Subscribe Property Data
+		case 0x3F: // Notify
 			processPESysex(groupOffset, s7Byte);
 			break;
 		#endif   
@@ -384,6 +396,7 @@ void midi2Processor::processUMP(uint32_t UMP){
 		
 		if(group < groupStart || group > groupStart + groups -1){
 			//Not for this Group Block
+			debug("  Not for this Group Block");
 			//Serial.println("  Not for this Group Block");
 					
 		}else			
@@ -497,7 +510,7 @@ void midi2Processor::processUMP(uint32_t UMP){
 	if(messPos == 1 && mt <= UMP_M2CVM){ //64bit Messages
 		if(group < groupStart || group > groupStart + groups -1){
 			//Not for this Group Block
-			//Serial.println("  Not for this Group Block");
+			debug("  Not for this Group Block");
 					
 		}else			
 		if(mt == UMP_SYSEX7){ //64 bits Data Messages (including System Exclusive)

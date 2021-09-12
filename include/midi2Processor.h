@@ -17,6 +17,8 @@
  * SOFTWARE.
  * 
  * ********************************************************/
+ #include <stdio.h>
+ 
 #ifdef ARDUINO
     #include <stdint.h>
     #include <stdlib.h>
@@ -84,11 +86,24 @@ class midi2Processor{
     void (*recvNAK)(uint8_t group, uint32_t remoteMuid) = 0;
     void (*recvInvalidateMUID)(uint8_t group, uint32_t remoteMuid, uint32_t terminateMuid) = 0;
     
+   
+    
     void addCIHeader(uint8_t ciType, uint8_t* sysexHeader, uint8_t ciVersion);
     void endSysex7(uint8_t groupOffset);
     void startSysex7(uint8_t groupOffset);
     void processSysEx(uint8_t groupOffset, uint8_t s7Byte);
     void processMIDICI(uint8_t groupOffset, uint8_t s7Byte);
+    
+    void (*sendOutDebug)(char *message) = 0;
+    void debug(char *message){
+		if(sendOutDebug==0) return;
+		sendOutDebug(message);
+	}
+	void debug(uint8_t b){
+		char messStr[2];
+		sprintf(messStr,"%x",b);
+		debug(messStr);
+	}
    
     
   public:
@@ -109,6 +124,8 @@ class midi2Processor{
     void sendDiscoveryRequest(uint8_t group, uint8_t ciVersion);
 	void sendNAK(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion);
 	void sendInvalidateMUID(uint8_t group, uint32_t terminateMuid, uint8_t ciVersion);
+	
+	inline void setDebug(void (*fptr)(char *message)){ sendOutDebug = fptr; }
 	
 
 	//-----------------------Handlers ---------------------------
@@ -201,9 +218,11 @@ class midi2Processor{
 	peHeader *peRquestDetails;
     uint8_t numRequests;
     void * _pvoid;
+    uint8_t headerProp;
     void (*recvPECapabilities)(uint8_t group, uint32_t remoteMuid, uint8_t numSimulRequests) = 0;
     void (*recvPEGetInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails) = 0;
-    void (*recvPESetInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails, uint8_t bodyLen, uint8_t*  body) = 0;
+    void (*recvPESetInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body) = 0;
+    void (*recvPESubInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body) = 0;
     uint8_t getPERequestId(uint8_t groupOffset, uint8_t s7Byte);
     void cleanupRequestId(uint8_t requestId);
     void processPERequestHeader(uint8_t groupOffset, uint8_t reqPosUsed, uint8_t s7Byte);
@@ -218,9 +237,15 @@ class midi2Processor{
 	        uint16_t headerLen, uint8_t* header, int numberOfChunks, int numberOfThisChunk, 
 			uint16_t bodyLength , uint8_t* body );
 			
+	void sendPESubReply(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, 
+	        uint16_t headerLen, uint8_t* header);		
+	void sendPESetReply(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, 
+	        uint16_t headerLen, uint8_t* header);		
+			
     inline void setPECapabilities(void (*fptr)(uint8_t group, uint32_t remoteMuid, uint8_t numSimulRequests)){ recvPECapabilities = fptr;}
     inline void setRecvPEGetInquiry(void (*fptr)(uint8_t group, uint32_t remoteMuid,  peHeader requestDetails)){ recvPEGetInquiry = fptr;}
-    inline void setRecvPESetInquiry(void (*fptr)(uint8_t group, uint32_t remoteMuid,  peHeader requestDetails, uint8_t bodyLen, uint8_t*  body)){ recvPESetInquiry = fptr;}
+    inline void setRecvPESetInquiry(void (*fptr)(uint8_t group, uint32_t remoteMuid,  peHeader requestDetails, uint16_t bodyLen, uint8_t*  body)){ recvPESetInquiry = fptr;}
+    inline void setRecvPESubInquiry(void (*fptr)(uint8_t group, uint32_t remoteMuid,  peHeader requestDetails, uint16_t bodyLen, uint8_t*  body)){ recvPESubInquiry = fptr;}
     //TODO PE Notify
 #endif
 	

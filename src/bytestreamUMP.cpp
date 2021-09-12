@@ -171,33 +171,36 @@ void midiBsToUMP::midi1BytestreamParse(uint8_t midi1Byte){
 	d1 = 255;
 	
 	if (midi1Byte == SYSEX_START){
-		sysex7State++;
+		sysex7State = 1;
+		sysex7Pos = 0;
 	}else
 	if (midi1Byte == SYSEX_STOP){
 	  
 		umpMess[messPos] = ((UMP_SYSEX7 << 4) + defaultGroup + 0L) << 24;
-		umpMess[messPos] +=  ((sysex7State <= 6?0:3) + 0L) << 20;
-		umpMess[messPos] +=  ((sysex7State%6 + 0L) << 16) ;
+		umpMess[messPos] +=  ((sysex7State == 1?0:3) + 0L) << 20;
+		umpMess[messPos] +=  ((sysex7Pos + 0L) << 16) ;
 		umpMess[messPos++] += (sysex[0] << 8) + sysex[1];
 		umpMess[messPos++] = ((sysex[2] + 0L) << 24) + ((sysex[3] + 0L)<< 16) + (sysex[4] << 8) + sysex[5];
 
-		sysex7State = -1;
+		sysex7State = 0;
 		memset(sysex, 0, sizeof(sysex));
 	}
   } else 
-  if(sysex7State >= 0){
+  if(sysex7State >= 1){
 	  //Check IF new UMP Message Type 3
-	  if(sysex7State%6 == 0 && sysex7State !=0){
+	  if(sysex7Pos%6 == 0 && sysex7Pos !=0){
 		 umpMess[messPos] = ((UMP_SYSEX7 << 4) + defaultGroup + 0L) << 24;
-		 umpMess[messPos] +=  ((sysex7State < 7?1:2) + 0L) << 20;
+		 umpMess[messPos] +=  (sysex7State + 0L) << 20;
 		 umpMess[messPos] +=  6L << 16;
 		 umpMess[messPos++] += (sysex[0] << 8) + sysex[1];
 		 umpMess[messPos++] = ((sysex[2] + 0L) << 24) + ((sysex[3] + 0L)<< 16) + (sysex[4] << 8) + sysex[5] + 0L;
 		 memset(sysex, 0, sizeof(sysex));
+		 sysex7State=2;
+		 sysex7Pos=0;
 	  }
 	  
-	  sysex[sysex7State%6] = midi1Byte;
-	  sysex7State++;
+	  sysex[sysex7Pos] = midi1Byte;
+	  sysex7Pos++;
   } else
   if (d1 != 255) { // Second byte
 		bytetreamToUMP(d0, d1, midi1Byte);

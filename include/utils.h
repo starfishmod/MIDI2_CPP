@@ -22,10 +22,8 @@
 #define UTILS_H
 
 #ifdef ARDUINO
-    #define SERIAL_PRINT  Serial.print
     #include <stdint.h>
 #else
-    #define SERIAL_PRINT  printf
     #include <cstdint>
 #endif
 
@@ -83,6 +81,15 @@
 #define MIDICI_PE_GETREPLY 0x35
 #define MIDICI_PE_SET 0x36
 #define MIDICI_PE_SETREPLY 0x37
+#define MIDICI_PE_SUB 0x38
+#define MIDICI_PE_SUBREPLY 0x39
+
+#define MIDICI_PE_COMMAND_START 1
+#define MIDICI_PE_COMMAND_END 2
+#define MIDICI_PE_COMMAND_PARTIAL 3
+#define MIDICI_PE_COMMAND_FULL 4
+#define MIDICI_PE_COMMAND_NOTIFY 5
+
 
 #define MIDI_PORT 0x7F
 
@@ -119,7 +126,9 @@ struct UMP128{
 #ifndef M2_DISABLE_PE
 struct peHeader {
     char resource[PE_HEAD_BUFFERLEN]="";
+    uint8_t command=0;
     char resId[PE_HEAD_BUFFERLEN]="";
+    char subscribeId[PE_HEAD_BUFFERLEN]="";
     int  offset = -1;
     int  limit = -1;
     int  status = -1;

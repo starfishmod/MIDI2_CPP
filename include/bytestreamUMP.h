@@ -22,6 +22,7 @@
 #define BSUMP_H
 
 #include <string.h>
+#include <stdio.h>
 
 #ifdef ARDUINO
    #include <stdint.h>
@@ -35,7 +36,9 @@ class midiBsToUMP{
 		uint8_t d0;
 		uint8_t d1;
 		
-		int sysex7State = -1;
+		uint8_t sysex7State = 0;
+		uint8_t sysex7Pos = 0;
+		
 		uint8_t sysex[6] = {0,0,0,0,0,0};
 	    uint8_t messPos=0;
 	    uint32_t umpMess[4];
@@ -49,6 +52,16 @@ class midiBsToUMP{
 		uint8_t rpnLsb[16];
 	    	
 		void bytetreamToUMP(uint8_t b0, uint8_t b1, uint8_t b2);
+		void (*sendOutDebug)(char *message) = 0;
+		void debug(char *message){
+			if(sendOutDebug==0) return;
+			sendOutDebug(message);
+		}
+		void debug(uint8_t b){
+			char messStr[2];
+			sprintf(messStr,"%x",b);
+			debug(messStr);
+		}
 
 	public:
 		uint8_t defaultGroup = 0;
@@ -61,6 +74,8 @@ class midiBsToUMP{
 		uint32_t readUMP();
 		
 		void midi1BytestreamParse(uint8_t midi1Byte);
+		
+		inline void setDebug(void (*fptr)(char *message)){ sendOutDebug = fptr; }
 	
 };
 
