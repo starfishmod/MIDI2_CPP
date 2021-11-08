@@ -21,12 +21,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#ifdef ARDUINO
-    #include <stdint.h>
-#else
-    #include <cstdint>
-#endif
-
+#include <cstdint>
+#include <cmath>
 
 #define NOTE_OFF 0x80
 #define NOTE_ON 0x90
@@ -56,7 +52,6 @@
 #define SEQSTOP 0xFC
 #define ACTIVESENSE 0xFE
 #define SYSTEMRESET 0xFF
-
 
 #define S7UNIVERSAL_NRT 0x7E
 #define S7UNIVERSAL_RT 0x7F
@@ -90,6 +85,15 @@
 #define MIDICI_PE_COMMAND_FULL 4
 #define MIDICI_PE_COMMAND_NOTIFY 5
 
+#define EXP_MIDICI_PE_ACTION_COPY 1
+#define EXP_MIDICI_PE_ACTION_MOVE 2
+#define EXP_MIDICI_PE_ACTION_DELETE 3
+#define EXP_MIDICI_PE_ACTION_CREATE_DIR 4
+
+#define MIDICI_PE_ASCII 1
+#define MIDICI_PE_MCODED7 1
+#define MIDICI_PE_MCODED7ZLIB 3
+
 
 #define MIDI_PORT 0x7F
 
@@ -99,10 +103,15 @@
 #define PE_HEAD_STATE_IN_OBJECT          2
 #define PE_HEAD_STATE_IN_STRING          4
 #define PE_HEAD_STATE_IN_NUMBER          8
+#define PE_HEAD_STATE_IN_BOOL            1
 
 #define PE_HEAD_KEY		16
 #define PE_HEAD_VALUE	32
 #define PE_HEAD_BUFFERLEN	36
+
+#ifndef EXP_MIDICI_PE_EXPERIMENTAL_PATH
+#define EXP_MIDICI_PE_EXPERIMENTAL_PATH 1
+#endif
 
 #define UMP_UTILITY 0x00
 #define UMP_SYSTEM 0x01
@@ -110,7 +119,7 @@
 #define UMP_SYSEX7 0x03
 #define UMP_M2CVM 0x04
 
-#include <math.h>
+
 
 
 
@@ -127,17 +136,20 @@ struct UMP128{
 struct peHeader {
     char resource[PE_HEAD_BUFFERLEN]="";
     uint8_t command=0;
+    uint8_t action=0;
     char resId[PE_HEAD_BUFFERLEN]="";
     char subscribeId[PE_HEAD_BUFFERLEN]="";
+    char path[EXP_MIDICI_PE_EXPERIMENTAL_PATH]="";
     int  offset = -1;
     int  limit = -1;
     int  status = -1;
+    bool partial = false;
     int  totalChunks = -1;
     int  numChunks = -1;
+    int  partialChunkCount = 1;
     uint8_t requestId = 255;
-    //int patch = -1;
-    //char mediaType[BUFFERLEN];
-    //char encoding[BUFFERLEN];
+    int mutualEncoding = -1;
+    char mediaType[PE_HEAD_BUFFERLEN];
 };
 #endif
 
@@ -147,7 +159,7 @@ uint32_t scaleUp(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits);
 
 uint32_t scaleDown(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits);
 
-long getNumberFromBytes(uint8_t* message, uint8_t offset, uint8_t amount);
+uint32_t getNumberFromBytes(const uint8_t* message, uint8_t offset, uint8_t amount);
 
 void setBytesFromNumbers(uint8_t* message, long number, uint8_t start, uint8_t amount);
 

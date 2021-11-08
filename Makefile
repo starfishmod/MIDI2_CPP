@@ -1,4 +1,3 @@
-
 OPTS= -g -Wuninitialized -Wmaybe-uninitialized -Wall -Wshadow -Wcast-qual \
       -Wextra -pedantic -Wno-unused-parameter \
       -Wno-c++11-extensions 

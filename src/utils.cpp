@@ -18,7 +18,7 @@
  * 
  * ********************************************************/
 
-#include <math.h>
+#include <cmath>
 #include "../include/utils.h"
 
 
@@ -28,19 +28,19 @@ uint32_t scaleUp(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits){
         return 0L;
     }
     if(srcBits==1){
-        return pow(2,dstBits) - 1L;
+        return (uint32_t)pow(2,dstBits) - 1L;
     }
 
     // simple bit shift
 	uint8_t scaleBits = (dstBits - srcBits);
 	uint32_t bitShiftedValue = (srcVal + 0L) << scaleBits;
-	uint32_t srcCenter = pow(2,(srcBits-1)) + 0L;
+	auto srcCenter = (uint32_t)pow(2,(srcBits-1));
 	if (srcVal <= srcCenter ) {
 		return bitShiftedValue;
 	}
 	// expanded bit repeat scheme
 	uint8_t repeatBits = srcBits - 1;
-	unsigned int repeatMask = pow(2,repeatBits) - 1;
+	auto repeatMask = (uint32_t)(pow(2,repeatBits) - 1);
 	uint32_t repeatValue = srcVal & repeatMask;
 	if (scaleBits > repeatBits) {
 		repeatValue <<= scaleBits - repeatBits;
@@ -61,11 +61,12 @@ uint32_t scaleDown(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits) {
 	return srcVal >> scaleBits;
 }
 
-long getNumberFromBytes(uint8_t* message, uint8_t offset, uint8_t amount){
-     
-    long num = 0;short upperOffset = offset+amount;
+uint32_t getNumberFromBytes(const uint8_t* message, uint8_t offset, uint8_t amount){
+
+    uint32_t num = 0;
+    uint8_t upperOffset = offset + amount;
 	for(short offsetC = offset; offsetC<upperOffset;offsetC++){
-		num += (long)(message[offsetC] << (7* (offsetC-offset)));
+		num += (uint32_t)(message[offsetC] << (7* (offsetC-offset)));
 	}
 	return num;
 }

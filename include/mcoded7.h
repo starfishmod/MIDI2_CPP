@@ -21,19 +21,14 @@
 #ifndef MC7_H
 #define MC7_H
 
-#include <string.h>
+#include <cstdint>
 
-#ifdef ARDUINO
-   #include <stdint.h>
-#else
-    #include <cstdint>
-#endif
 
 class mcoded7Decode{
 
 	private:
 		uint8_t dumpPos=0;
-		uint8_t dump[7];
+
 		
 		uint8_t fBit=0;
 		uint8_t cnt=0;
@@ -41,27 +36,25 @@ class mcoded7Decode{
 
 	public:
 		
-		mcoded7Decode();
+		mcoded7Decode(){};
+        uint8_t dump[7];
+
+        uint16_t currentPos(){ return dumpPos;}
 		
-		bool availableBytes(){ return (dumpPos > 0);}
-		
-		uint8_t getLatestByte(){
-			return dump[dumpPos];
-		}
-		
+
 		void reset(){
-			fBit=0; cnt=0; bits=0;dumpPos=0;
+            memset(dump,0,7);
+			fBit=0; bits=0;dumpPos=0;
 		}
 		
 		void parseS7Byte(uint8_t s7Byte){		
-			if ((cnt % 8) == 0) {
+			if (dumpPos == 0) {
 				reset();
 				bits = s7Byte;
 			} else {
-				fBit = ((bits >> (7 - (cnt % 8))) & 1) << 7;
+				fBit = ((bits >> (7 - (dumpPos % 8))) & 1) << 7;
 				dump[dumpPos++] = s7Byte | fBit;
 			}
-			cnt++;		
 		}
 	
 };
@@ -70,39 +63,33 @@ class mcoded7Decode{
 class mcoded7Encode{
 
 	private:
-		uint8_t dumpPos=0;
-		uint8_t dump[8];
-		uint8_t idx =0;
-		uint8_t cnt=0;
+		uint16_t dumpPos = 1;
+		uint8_t cnt = 6;
 
 	public:
-		
-		mcoded7Encode();
-		
-		bool availableBytes(){ return (dumpPos > 0);}
-		
-		uint8_t getLatestByte(){
-			return dump[dumpPos];
-		}
-		
-		void reset(){
-			cnt=0; dumpPos=0;
-			memset(dump,0,8);
-		}
-		
-		void parseS7Byte(uint8_t s7Byte){		
-			uint8_t c = s7Byte & 0x7F;
-			uint8_t msb = s7Byte >> 7;
+
+        uint8_t dump[8];
+		mcoded7Encode(){};
+
+        uint16_t currentPos(){ return dumpPos-1;}
+
+        void reset(){
+            memset(dump,0,8);
+            dumpPos=1; cnt = 6;
+        }
+
+		void parseByte(uint8_t s8Byte){
+			uint8_t c = s8Byte & 0x7F;
+			uint8_t msb = s8Byte >> 7;
 			dump[0] |= msb << cnt;
-			dump[dumpPos++] = c;
+			dump[dumpPos] = c;
 			if (cnt == 0) {
-				idx += 8;
-				reset();
 				cnt = 6;
 			}
 			else {
 				cnt--;
-			}		
+			}
+			dumpPos++;
 		}
 };
 

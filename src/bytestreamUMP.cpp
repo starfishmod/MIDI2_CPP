@@ -218,8 +218,7 @@ void midiBsToUMP::midi1BytestreamParse(uint8_t midi1Byte){
 	  if (d0 < SYSEX_START || d0 == SPP) { // First data byte
 		d1=midi1Byte;
 		return;
-	  }  
-	  
+	  }
   }  
 }
 

@@ -19,9 +19,8 @@
  * ********************************************************/
 
 #include "../include/midi2Processor.h"
-#include "../include/utils.h"
  
-#include <stdlib.h>
+#include <cstdlib>
 
 
 midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t numRequestsTotal){
@@ -50,6 +49,7 @@ midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t num
 		peRquestDetails[i].limit=-1;
 		peRquestDetails[i].status=-1;
 		peRquestDetails[i].command=0;
+		peRquestDetails[i].partialChunkCount=1;
 
 	}
 	#endif
@@ -77,22 +77,22 @@ midi2Processor::midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t num
 		);
 	}
 	
-	debug("MIDICI Inst loaded");
+	//debug("MIDICI Inst loaded");
 }
 
 midi2Processor::~midi2Processor() { 
-	free(sysexPos); sysexPos = NULL; 
-	free(sysexMode); sysexMode = NULL; 
-	free(sysUniNRTMode); sysUniNRTMode = NULL; 
-	free(sysUniNRTMode); sysUniNRTMode = NULL; 
-	free(ciVer); ciVer = NULL; 
-	free(remoteMUID); remoteMUID = NULL; 
-	free(destMuid); destMuid = NULL; 
-	free(sys7CharBuffer); sys7CharBuffer = NULL; 
-	free(sys7IntBuffer); sys7IntBuffer = NULL; 
+	free(sysexPos); sysexPos = nullptr;
+	free(sysexMode); sysexMode = nullptr;
+	free(sysUniNRTMode); sysUniNRTMode = nullptr;
+	free(sysUniNRTMode); sysUniNRTMode = nullptr;
+	free(ciVer); ciVer = nullptr;
+	free(remoteMUID); remoteMUID = nullptr;
+	free(destMuid); destMuid = nullptr;
+	free(sys7CharBuffer); sys7CharBuffer = nullptr;
+	free(sys7IntBuffer); sys7IntBuffer = nullptr;
 	
 	#ifndef M2_DISABLE_PE
-	free(peRquestDetails); peRquestDetails = NULL;
+	free(peRquestDetails); peRquestDetails = nullptr;
 	#endif
 	
 }
@@ -194,7 +194,7 @@ void midi2Processor::processSysEx(uint8_t groupOffset, uint8_t s7Byte){
 				break;
 			
 		}
-	}else if(sysexMode[groupOffset] == S7UNIVERSAL_RT){
+	}else if(sysexMode[groupOffset] == S7UNIVERSAL_RT) {
 		//This block of code represents potential future Universal SysEx Work
 		/*switch(sysUniNRTMode[groupOffset]){
 			
@@ -266,7 +266,7 @@ void midi2Processor::processMIDICI(uint8_t groupOffset, uint8_t s7Byte){
 			}
 			if(sysexPos[groupOffset]==28){
 				//debug("  - Discovery Request 28 ");
-				if (recvDiscoveryRequest != 0){
+				if (recvDiscoveryRequest != nullptr){
 					uint8_t manuIdR[3] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2]};
 					uint8_t famIdR[2] = {sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
 					uint8_t modelIdR[2] = {sys7CharBuffer[groupOffset][5], sys7CharBuffer[groupOffset][6]};
@@ -286,7 +286,7 @@ void midi2Processor::processMIDICI(uint8_t groupOffset, uint8_t s7Byte){
 				
 				//Send Discovery Reply
 				//debug("  -> Discovery Reply ");
-				if(sendOutSysex ==0) return;
+				if(sendOutSysex == nullptr) return;
 				//debug("  -> Discovery Reply 2");
 				
 				uint8_t sysex[13];
@@ -312,7 +312,7 @@ void midi2Processor::processMIDICI(uint8_t groupOffset, uint8_t s7Byte){
 				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
 			}
 			if(sysexPos[groupOffset]==28){
-				if (recvDiscoveryReply != 0){
+				if (recvDiscoveryReply != nullptr){
 					uint8_t manuIdR[3] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2]};
 					uint8_t famIdR[2] = {sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
 					uint8_t modelIdR[2] = {sys7CharBuffer[groupOffset][5], sys7CharBuffer[groupOffset][6]};
@@ -341,12 +341,12 @@ void midi2Processor::processMIDICI(uint8_t groupOffset, uint8_t s7Byte){
 				destMuid[groupOffset] =  destMuid[groupOffset] + (s7Byte << (7 * (sysexPos[groupOffset] - 13)));
 			}
 		
-			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
+			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != nullptr){
 				recvInvalidateMUID(groupOffset + groupStart,remoteMUID[groupOffset], destMuid[groupOffset]);
 			}
 			break;	
 		case MIDICI_NAK: //MIDI-CI NAK
-			if (recvNAK != 0){
+			if (recvNAK != nullptr){
 				recvNAK(groupOffset + groupStart,remoteMUID[groupOffset]);
 			}
 			break;
@@ -396,8 +396,7 @@ void midi2Processor::processUMP(uint32_t UMP){
 		
 		if(group < groupStart || group > groupStart + groups -1){
 			//Not for this Group Block
-			debug("  Not for this Group Block");
-			//Serial.println("  Not for this Group Block");
+			// debug("  Not for this Group Block");
 					
 		}else			
 		if(mt == UMP_UTILITY){ //32 bits Utility Messages
@@ -414,15 +413,12 @@ void midi2Processor::processUMP(uint32_t UMP){
 				break;
 			#ifndef M2_DISABLE_JR	
 				case 0b1: // JR Clock Message 
-					if(recvJRClock != 0) recvJRClock(group, timing);
+					if(recvJRClock != nullptr) recvJRClock(group, timing);
 					break;
 				case 0b10: //JR Timestamp Message
 					//??? Message out or attach to next message?
-					if(recvJRTimeStamp != 0) recvJRTimeStamp(group, timing);
+					if(recvJRTimeStamp != nullptr) recvJRTimeStamp(group, timing);
 					break;
-
-				
-				break;
 			#endif
 			}
 			
@@ -434,41 +430,41 @@ void midi2Processor::processUMP(uint32_t UMP){
 				case TIMING_CODE:
 				{
 					uint8_t timing = (umpMess[0] >> 8) & 0x7F;
-					if(timingCode != 0) timingCode(group, timing); 
+					if(timingCode != nullptr) timingCode(group, timing);
 				}
 				break;
 				case SPP:
 				{
 					uint16_t position = ((umpMess[0] >> 8) & 0x7F)  + ((umpMess[0] & 0x7F) << 7);
-					if(songPositionPointer != 0) songPositionPointer(group, position);
+					if(songPositionPointer != nullptr) songPositionPointer(group, position);
 				}
 				break;
 				case SONG_SELECT:
 				{
 					uint8_t song = (umpMess[0] >> 8) & 0x7F;
-					if(songSelect != 0) songSelect(group, song); 
+					if(songSelect != nullptr) songSelect(group, song);
 				}
 				break;
 				case TUNEREQUEST:
-				if(tuneRequest != 0) tuneRequest(group); 
+				if(tuneRequest != nullptr) tuneRequest(group);
 				break;
 				case TIMINGCLOCK:
-				if(timingClock != 0) timingClock(group); 
+				if(timingClock != nullptr) timingClock(group);
 				break;
 				case SEQSTART:
-				if(seqStart != 0) seqStart(group);
+				if(seqStart != nullptr) seqStart(group);
 				break;
 				case SEQCONT:
-				if(seqCont != 0) seqCont(group);
+				if(seqCont != nullptr) seqCont(group);
 				break;
 				case SEQSTOP:
-				if(seqStop != 0) seqStop(group);
+				if(seqStop != nullptr) seqStop(group);
 				break;
 				case ACTIVESENSE:
-				if(activeSense != 0) activeSense(group);
+				if(activeSense != nullptr) activeSense(group);
 				break;
 				case SYSTEMRESET:
-				if(systemReset != 0) systemReset(group);
+				if(systemReset != nullptr) systemReset(group);
 				break;
 			}
 		
@@ -482,35 +478,35 @@ void midi2Processor::processUMP(uint32_t UMP){
 			
 			switch(status){
 				case NOTE_OFF: //Note Off
-					if(midiNoteOff != 0) midiNoteOff(group, channel, val1, scaleUp(val2,7,16), 0, 0); 
+					if(midiNoteOff != nullptr) midiNoteOff(group, channel, val1, scaleUp(val2,7,16), 0, 0);
 					break;
 				case NOTE_ON: //Note On
-					if(midiNoteOn != 0) midiNoteOn(group, channel, val1, scaleUp(val2,7,16), 0, 0); 
+					if(midiNoteOn != nullptr) midiNoteOn(group, channel, val1, scaleUp(val2,7,16), 0, 0);
 					break;
 				case KEY_PRESSURE: //Poly Pressure
-					if(polyPressure != 0) polyPressure(group, channel, val1, scaleUp(val2,7,32)); 
+					if(polyPressure != nullptr) polyPressure(group, channel, val1, scaleUp(val2,7,32));
 					break;	
 				case CC: //CC
-					if(controlChange != 0) controlChange(group, channel, val1, scaleUp(val2,7,32)); 
+					if(controlChange != nullptr) controlChange(group, channel, val1, scaleUp(val2,7,32));
 					break;
 				case PROGRAM_CHANGE: //Program Change Message
-					if(programChange != 0) programChange(group, channel, val1, false, 0, 0);  
+					if(programChange != nullptr) programChange(group, channel, val1, false, 0, 0);
 					break;
 				case CHANNEL_PRESSURE: //Channel Pressure
-					if(channelPressure != 0) channelPressure(group, channel, scaleUp(val1,7,32)); 
+					if(channelPressure != nullptr) channelPressure(group, channel, scaleUp(val1,7,32));
 					break;
 				case PITCH_BEND: //PitchBend
-					if(pitchBend != 0) pitchBend(group, channel, scaleUp((val2 << 7) + val1,14,32)); 
+					if(pitchBend != nullptr) pitchBend(group, channel, scaleUp((val2 << 7) + val1,14,32));
 					break;		
 			}				
 		}
-		return;
+        return;
 		
 	}else		
 	if(messPos == 1 && mt <= UMP_M2CVM){ //64bit Messages
 		if(group < groupStart || group > groupStart + groups -1){
 			//Not for this Group Block
-			debug("  Not for this Group Block");
+			// debug("  Not for this Group Block");
 					
 		}else			
 		if(mt == UMP_SYSEX7){ //64 bits Data Messages (including System Exclusive)
@@ -541,44 +537,44 @@ void midi2Processor::processUMP(uint32_t UMP){
 			
 			switch(status){
 				case NOTE_OFF: //Note Off
-					if(midiNoteOff != 0) midiNoteOff(group, channel, val1, umpMess[1] >> 16, val2, umpMess[1] & 65535); 
+					if(midiNoteOff != nullptr) midiNoteOff(group, channel, val1, umpMess[1] >> 16, val2, umpMess[1] & 65535);
 					break;
 				
 				case NOTE_ON: //Note On
-					if(midiNoteOn != 0) midiNoteOn(group, channel, val1, umpMess[1] >> 16, val2, umpMess[1] & 65535); 
+					if(midiNoteOn != nullptr) midiNoteOn(group, channel, val1, umpMess[1] >> 16, val2, umpMess[1] & 65535);
 					break;
 					
 				case KEY_PRESSURE: //Poly Pressure
-					if(polyPressure != 0) polyPressure(group, channel, val1, umpMess[1]); 
+					if(polyPressure != nullptr) polyPressure(group, channel, val1, umpMess[1]);
 					break;	
 				
 				case CC: //CC
-					if(controlChange != 0) controlChange(group, channel, val1, umpMess[1]);
+					if(controlChange != nullptr) controlChange(group, channel, val1, umpMess[1]);
 					break;	
 				
 				case RPN: //RPN
-					if(rpn != 0) rpn(group, channel, val1, val2, umpMess[1]); 
+					if(rpn != nullptr) rpn(group, channel, val1, val2, umpMess[1]);
 					break;	
 				
 				case NRPN: //NRPN
-					if(nrpn != 0) nrpn(group, channel, val1, val2, umpMess[1]); 
+					if(nrpn != nullptr) nrpn(group, channel, val1, val2, umpMess[1]);
 					break;	
 				
 				case RPN_RELATIVE: //Relative RPN
-					if(rrpn != 0) rrpn(group, channel, val1, val2, (int32_t)umpMess[1]/*twoscomplement*/); 
+					if(rrpn != nullptr) rrpn(group, channel, val1, val2, (int32_t)umpMess[1]/*twoscomplement*/);
 					break;	
 				case NRPN_RELATIVE: //Relative NRPN
-					if(rnrpn != 0) rnrpn(group, channel, val1, val2, (int32_t)umpMess[1]/*twoscomplement*/); 
+					if(rnrpn != nullptr) rnrpn(group, channel, val1, val2, (int32_t)umpMess[1]/*twoscomplement*/);
 					break;
 				
 				case PROGRAM_CHANGE: //Program Change Message
-					if(programChange != 0) programChange(group, channel, umpMess[1] >> 24, umpMess[0] & 1 , (umpMess[1] >> 8) & 0x7f , umpMess[1] & 0x7f);
+					if(programChange != nullptr) programChange(group, channel, umpMess[1] >> 24, umpMess[0] & 1 , (umpMess[1] >> 8) & 0x7f , umpMess[1] & 0x7f);
 					break;
 				case CHANNEL_PRESSURE: //Channel Pressure
-					if(channelPressure != 0) channelPressure(group, channel, umpMess[1]); 
+					if(channelPressure != nullptr) channelPressure(group, channel, umpMess[1]);
 					break;
 				case PITCH_BEND: //PitchBend
-					if(pitchBend != 0) pitchBend(group, channel, umpMess[1]);
+					if(pitchBend != nullptr) pitchBend(group, channel, umpMess[1]);
 					break;	
 					
 				case PITCH_BEND_PERNOTE: //Per Note PitchBend 6
@@ -598,7 +594,7 @@ void midi2Processor::processUMP(uint32_t UMP){
 					
 			}
 		}
-		messPos =0;
+        messPos =0;
 	}else		
 	if(messPos == 3 && mt <= 0x05){ //128bit Messages
 		if(group < groupStart || group > groupStart + groups -1){
@@ -613,7 +609,7 @@ void midi2Processor::processUMP(uint32_t UMP){
 }
 
 void midi2Processor::sendDiscoveryRequest(uint8_t group, uint8_t ciVersion){
-	if(sendOutSysex ==0) return;
+	if(sendOutSysex == nullptr) return;
 	
 	uint8_t sysex[13];
 	addCIHeader(MIDICI_DISCOVERY,sysex,ciVersion);
@@ -631,7 +627,7 @@ void midi2Processor::sendDiscoveryRequest(uint8_t group, uint8_t ciVersion){
 }
 
 void midi2Processor::sendNAK(uint8_t group, uint32_t _remoteMuid, uint8_t ciVersion){
-	if(sendOutSysex ==0) return;
+	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
 	addCIHeader(MIDICI_NAK,sysex,ciVersion);
 	setBytesFromNumbers(sysex, _remoteMuid, 9, 4);
@@ -639,7 +635,7 @@ void midi2Processor::sendNAK(uint8_t group, uint32_t _remoteMuid, uint8_t ciVers
 }
 
 void midi2Processor::sendInvalidateMUID(uint8_t group, uint32_t terminateMuid, uint8_t ciVersion){
-	if(sendOutSysex ==0) return;
+	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
 	addCIHeader(MIDICI_INVALIDATEMUID,sysex,ciVersion);
 	setBytesFromNumbers(sysex, M2_CI_BROADCAST, 9, 4);
@@ -651,7 +647,7 @@ void midi2Processor::sendInvalidateMUID(uint8_t group, uint32_t terminateMuid, u
 
 #ifndef M2_DISABLE_IDREQ
 void midi2Processor::sendIdentityRequest (uint8_t group){
-	if(sendOutSysex ==0) return;
+	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[]={S7UNIVERSAL_NRT,MIDI_PORT,S7IDREQUEST,0x01};
 	sendOutSysex(group,sysex,4,0);
 }
@@ -667,7 +663,7 @@ void midi2Processor::processDeviceID(uint8_t groupOffset, uint8_t s7Byte){
 			,ver[0],ver[1],ver[2],ver[3] //version id
 		};
 		
-		if(sendOutSysex !=0) sendOutSysex(groupOffset + groupStart, sysex,15,0);
+		if(sendOutSysex != nullptr) sendOutSysex(groupOffset + groupStart, sysex,15,0);
 		
 	}
 	if(sysexPos[groupOffset] == 3 && s7Byte == 0x02){
@@ -679,7 +675,7 @@ void midi2Processor::processDeviceID(uint8_t groupOffset, uint8_t s7Byte){
 			sys7CharBuffer[groupOffset][sysexPos[groupOffset]-3] = s7Byte; 
 		}
 
-		if (sysexPos[groupOffset] == 14 && sendOutIdResponse != 0){
+		if (sysexPos[groupOffset] == 14 && sendOutIdResponse != nullptr){
 			uint8_t manuIdR[3] = {sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3]};
 			uint8_t famIdR[2] = {sys7CharBuffer[groupOffset][4], sys7CharBuffer[groupOffset][5]};
 			uint8_t modelIdR[2] = {sys7CharBuffer[groupOffset][6], sys7CharBuffer[groupOffset][7]};

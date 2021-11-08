@@ -1,22 +1,15 @@
 #include "../include/midi2Profiles.h"
 #include "../include/midi2Processor.h"
-#include "../include/utils.h"
-
-
+#include <cstdint>
 #ifndef M2_DISABLE_PROFILE
 
 
-#ifdef ARDUINO
-    #include <stdint.h>
-#else
-    #include <cstdint>
-#endif
 
 
 void midi2Processor::processProfileSysex(uint8_t groupOffset, uint8_t s7Byte){
 	switch (ciType[groupOffset]){
 		case MIDICI_PROFILE_INQUIRY: //Profile Inquiry	
-			if (sysexPos[groupOffset] == 12 && recvProfileInquiry != 0){
+			if (sysexPos[groupOffset] == 12 && recvProfileInquiry != nullptr){
 				recvProfileInquiry(groupOffset + groupStart, remoteMUID[groupOffset], sysUniPort[groupOffset]);
 			}
 			break;
@@ -38,7 +31,7 @@ void midi2Processor::processProfileSysex(uint8_t groupOffset, uint8_t s7Byte){
 			if(sysexPos[groupOffset] >= 15 && sysexPos[groupOffset] <= 12 + sys7IntBuffer[groupOffset][0]*5){
 				uint8_t pos = (sysexPos[groupOffset] - 13) % 5;
 				sys7CharBuffer[groupOffset][pos] = s7Byte;
-				if(pos==4 && recvSetProfileEnabled!=0){
+				if(pos==4 && recvSetProfileEnabled != nullptr){
 					uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
 					recvSetProfileEnabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
 				}
@@ -47,7 +40,7 @@ void midi2Processor::processProfileSysex(uint8_t groupOffset, uint8_t s7Byte){
 			if(sysexPos[groupOffset] >= 15 + sys7CharBuffer[groupOffset][0]*5  && sysexPos[groupOffset] <= 12 + sys7IntBuffer[groupOffset][0]*5 + sys7IntBuffer[groupOffset][1]*5){
 				uint8_t pos = (sysexPos[groupOffset] - 13) % 5;
 				sys7CharBuffer[groupOffset][pos] = s7Byte;
-				if(pos==4 && recvSetProfileDisabled!=0){
+				if(pos==4 && recvSetProfileDisabled != nullptr){
 					uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
 					recvSetProfileDisabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
 				}
@@ -57,7 +50,7 @@ void midi2Processor::processProfileSysex(uint8_t groupOffset, uint8_t s7Byte){
 			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
 				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
 			}
-			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
+			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != nullptr){
 				uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
 				recvSetProfileOn(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
 			}
@@ -66,7 +59,7 @@ void midi2Processor::processProfileSysex(uint8_t groupOffset, uint8_t s7Byte){
 			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
 				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
 			}
-			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
+			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != nullptr){
 				uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
 				recvSetProfileOff(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
 			}
@@ -75,7 +68,7 @@ void midi2Processor::processProfileSysex(uint8_t groupOffset, uint8_t s7Byte){
 			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
 				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
 			}
-			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
+			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != nullptr){
 				uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
 				recvSetProfileEnabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
 			}
@@ -84,7 +77,7 @@ void midi2Processor::processProfileSysex(uint8_t groupOffset, uint8_t s7Byte){
 			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
 				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
 			}
-			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != 0){
+			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != nullptr){
 				uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
 				recvSetProfileDisabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
 			}
@@ -93,7 +86,7 @@ void midi2Processor::processProfileSysex(uint8_t groupOffset, uint8_t s7Byte){
 }
 
 void midi2Processor::sendProfileListRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination){
-	if(sendOutSysex ==0) return;
+	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
 	addCIHeader(MIDICI_PROFILE_INQUIRY,sysex,ciVersion);
 	sysex[1] = destination;
@@ -103,7 +96,7 @@ void midi2Processor::sendProfileListRequest(uint8_t group, uint32_t remoteMuid, 
 
 
 void midi2Processor::sendProfileListResponse(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, uint8_t profilesEnabledLen, uint8_t* profilesEnabled, uint8_t profilesDisabledLen , uint8_t* profilesDisabled ){
-	if(sendOutSysex ==0) return;
+	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
 	addCIHeader(MIDICI_PROFILE_INQUIRYREPLY, sysex, ciVersion);
 	sysex[1] = destination;
@@ -120,7 +113,7 @@ void midi2Processor::sendProfileListResponse(uint8_t group, uint32_t remoteMuid,
 }
 
 void midi2Processor::sendProfileOn(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex ==0) return;
+	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
 	addCIHeader(MIDICI_PROFILE_SETON, sysex, ciVersion);
 	sysex[1] = destination;
@@ -130,7 +123,7 @@ void midi2Processor::sendProfileOn(uint8_t group, uint32_t remoteMuid, uint8_t c
 }
 
 void midi2Processor::sendProfileOff(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex ==0) return;
+	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
 	addCIHeader(MIDICI_PROFILE_SETOFF, sysex, ciVersion);
 	sysex[1] = destination;
@@ -140,7 +133,7 @@ void midi2Processor::sendProfileOff(uint8_t group, uint32_t remoteMuid, uint8_t 
 }
 
 void midi2Processor::sendProfileEnabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex ==0) return;
+	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
 	addCIHeader(MIDICI_PROFILE_ENABLED, sysex, ciVersion);
 	sysex[1] = destination;
@@ -150,7 +143,7 @@ void midi2Processor::sendProfileEnabled(uint8_t group, uint32_t remoteMuid, uint
 }
 
 void midi2Processor::sendProfileDisabled(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex ==0) return;
+	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
 	addCIHeader(MIDICI_PROFILE_DISABLED, sysex, ciVersion);
 	sysex[1] = destination;

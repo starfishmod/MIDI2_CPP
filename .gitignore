@@ -2,3 +2,6 @@
 .vscode/dryrun.log
 .vscode/settings.json
 build
+.idea/*
+.idea
+
