@@ -33,25 +33,8 @@ class midi2Processor{
   
 	uint32_t umpMess[4];
 	uint8_t messPos=0;
-	
-	uint8_t groupStart;
-	uint8_t groups;
-	
-	uint32_t syExMess[2]={0,0};
-    uint16_t syExMessPos=0;
-    
-    //SysEx7Based Data
-    bool *sysex7State;   
-    uint16_t *sysexPos;
-    uint8_t *sysexMode; 
-    uint8_t *sysUniNRTMode;
-    uint8_t *sysUniPort;
-    uint8_t **sys7CharBuffer;
-    uint16_t **sys7IntBuffer;
-    uint8_t *ciType;
-    uint8_t *ciVer;
-    uint32_t *remoteMUID;
-    uint32_t *destMuid;
+
+    umpSysex7 syExMess[UMPGROUPS];
     
     void (*midiNoteOff)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData) = nullptr;
     void (*midiNoteOn)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData) = nullptr;
@@ -76,13 +59,13 @@ class midi2Processor{
     void (*activeSense)(uint8_t group) = nullptr;
     void (*systemReset)(uint8_t group) = nullptr;
     
-    void (*recvDiscoveryRequest)(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex) = nullptr;
+    void (*recvDiscoveryRequest)(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion,
+            uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport,
+            uint16_t maxSysex) = nullptr;
     void (*recvDiscoveryReply)(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex) = nullptr;
     void (*recvNAK)(uint8_t group, uint32_t remoteMuid) = nullptr;
     void (*recvInvalidateMUID)(uint8_t group, uint32_t remoteMuid, uint32_t terminateMuid) = nullptr;
-    
-   
-    
+
     void addCIHeader(uint8_t ciType, uint8_t* sysexHeader, uint8_t ciVersion);
     void endSysex7(uint8_t groupOffset);
     void startSysex7(uint8_t groupOffset);
@@ -112,7 +95,7 @@ class midi2Processor{
     
     uint16_t sysExMax = 512;
     
-    midi2Processor(uint8_t grStart, uint8_t totalGroups, uint8_t numRequestsTotal);
+    midi2Processor(uint8_t numRequestsTotal);
 	~midi2Processor();
 
     void processUMP(uint32_t UMP);
@@ -212,8 +195,6 @@ class midi2Processor{
   private:
 	peHeader *peRquestDetails;
     uint8_t numRequests;
-    void * _pvoid;
-    uint8_t headerProp;
     void (*recvPECapabilities)(uint8_t group, uint32_t remoteMuid, uint8_t numSimulRequests) = nullptr;
     void (*recvPEGetInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails) = nullptr;
     void (*recvPESetReply)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails) = nullptr;
@@ -222,6 +203,7 @@ class midi2Processor{
     void (*recvPESubInquiry)(uint8_t group, uint32_t remoteMuid, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet) = nullptr;
     uint8_t getPERequestId(uint8_t groupOffset, uint8_t s7Byte);
     void cleanupRequestId(uint8_t requestId);
+    void cleanupRequest(uint8_t reqpos);
     void processPEHeader(uint8_t groupOffset, uint8_t reqPosUsed, uint8_t s7Byte);
     void processPESysex(uint8_t groupOffset, uint8_t s7Byte);
   public:

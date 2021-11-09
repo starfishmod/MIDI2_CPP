@@ -96,7 +96,6 @@
 
 
 #define MIDI_PORT 0x7F
-
 #define M2_CI_BROADCAST 0xFFFFFFF
 
 
@@ -119,7 +118,9 @@
 #define UMP_SYSEX7 0x03
 #define UMP_M2CVM 0x04
 
-
+#ifndef UMPGROUPS
+#define UMPGROUPS 16
+#endif
 
 
 
@@ -131,9 +132,34 @@ struct UMP128{
 	uint32_t UMP[4];
 };
 
+struct umpSysex7{
+    //bool _state = false;
+    uint16_t _pos = 0;
+    uint8_t realtime = 0;
+    uint8_t universalId = 0;
+    uint8_t deviceId = 255;
+    uint8_t ciType = 255;
+    uint8_t ciVer = 255;
+    uint32_t remoteMUID = 0;
+    uint32_t destMuid = 0;
+    uint8_t reqPosUsed = 255;
+    uint8_t buffer1[PE_HEAD_BUFFERLEN];
+    /* in Discovery this is [sysexID1,sysexID2,sysexID3,famId1,famid2,modelId1,modelId2,ver1,ver2,ver3,ver4]
+     * in Profiles this is [pf1, pf1, pf3, pf4, pf5]
+     */
+
+    uint16_t intbuffer1[2];
+    /* in Discovery this is [ciSupport, maxSysex]
+     * in Profile Inquiry Reply, this is [Enabled Profiles Length, Disabled Profile Length]
+     * in PE this is [headerlength, Body Length]
+     */
+};
+
 
 #ifndef M2_DISABLE_PE
 struct peHeader {
+    uint8_t requestId = 255;
+    uint8_t group = 255;
     char resource[PE_HEAD_BUFFERLEN]="";
     uint8_t command=0;
     uint8_t action=0;
@@ -147,9 +173,13 @@ struct peHeader {
     int  totalChunks = -1;
     int  numChunks = -1;
     int  partialChunkCount = 1;
-    uint8_t requestId = 255;
     int mutualEncoding = -1;
     char mediaType[PE_HEAD_BUFFERLEN];
+    void * _pvoid;
+    uint8_t _headerProp;
+    uint8_t _headerState = PE_HEAD_KEY + PE_HEAD_STATE_IN_OBJECT;
+    uint8_t _headerPos = 0;
+
 };
 #endif
 

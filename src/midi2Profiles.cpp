@@ -6,80 +6,86 @@
 
 
 
-void midi2Processor::processProfileSysex(uint8_t groupOffset, uint8_t s7Byte){
-	switch (ciType[groupOffset]){
+void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
+	switch (syExMess[group].ciType){
 		case MIDICI_PROFILE_INQUIRY: //Profile Inquiry	
-			if (sysexPos[groupOffset] == 12 && recvProfileInquiry != nullptr){
-				recvProfileInquiry(groupOffset + groupStart, remoteMUID[groupOffset], sysUniPort[groupOffset]);
+			if (syExMess[group]._pos == 12 && recvProfileInquiry != nullptr){
+				recvProfileInquiry(group, syExMess[group].remoteMUID, syExMess[group].deviceId);
 			}
 			break;
-		case MIDICI_PROFILE_INQUIRYREPLY: //Reply to Profile Inquiry
-			
-			if(sysexPos[groupOffset] == 13){
-				sys7IntBuffer[groupOffset][0] = (int)s7Byte;
-			}
-			if(sysexPos[groupOffset] == 14){
-				sys7IntBuffer[groupOffset][0] += (int)s7Byte << 7;
-			}
-			
-			if(sysexPos[groupOffset] == 13 + sys7CharBuffer[groupOffset][0]*5){
-				sys7IntBuffer[groupOffset][1] = (int)s7Byte;
-			}
-			if(sysexPos[groupOffset] == 14 + sys7CharBuffer[groupOffset][0]*5){
-				sys7IntBuffer[groupOffset][1] += (int)s7Byte << 7;
-			}
-			if(sysexPos[groupOffset] >= 15 && sysexPos[groupOffset] <= 12 + sys7IntBuffer[groupOffset][0]*5){
-				uint8_t pos = (sysexPos[groupOffset] - 13) % 5;
-				sys7CharBuffer[groupOffset][pos] = s7Byte;
-				if(pos==4 && recvSetProfileEnabled != nullptr){
-					uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-					recvSetProfileEnabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
-				}
-			}
-			
-			if(sysexPos[groupOffset] >= 15 + sys7CharBuffer[groupOffset][0]*5  && sysexPos[groupOffset] <= 12 + sys7IntBuffer[groupOffset][0]*5 + sys7IntBuffer[groupOffset][1]*5){
-				uint8_t pos = (sysexPos[groupOffset] - 13) % 5;
-				sys7CharBuffer[groupOffset][pos] = s7Byte;
-				if(pos==4 && recvSetProfileDisabled != nullptr){
-					uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-					recvSetProfileDisabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
-				}
-			}
-			break;
+		case MIDICI_PROFILE_INQUIRYREPLY: { //Reply to Profile Inquiry
+            //Enabled Profiles Length
+            if (syExMess[group]._pos == 13 || syExMess[group]._pos == 14) {
+                syExMess[group].intbuffer1[0] += s7Byte << (7 * (syExMess[group]._pos - 13));
+            }
+
+            //Disabled Profile Length
+            int enabledProfileOffset = syExMess[group].intbuffer1[0] * 5 + 13;
+            if (
+                    syExMess[group]._pos == enabledProfileOffset
+                    || syExMess[group]._pos == 1 + enabledProfileOffset
+                    ) {
+                syExMess[group].intbuffer1[1] += s7Byte << (7 * (syExMess[group]._pos - enabledProfileOffset));
+            }
+
+            if (syExMess[group]._pos >= 15 && syExMess[group]._pos < enabledProfileOffset) {
+                uint8_t pos = (syExMess[group]._pos - 13) % 5;
+                syExMess[group].buffer1[pos] = s7Byte;
+                if (pos == 4 && recvSetProfileEnabled != nullptr) {
+                    uint8_t profile[5] = {syExMess[group].buffer1[0], syExMess[group].buffer1[1],
+                                          syExMess[group].buffer1[2], syExMess[group].buffer1[3],
+                                          syExMess[group].buffer1[4]};
+                    recvSetProfileEnabled(group, syExMess[group].remoteMUID, syExMess[group].deviceId, profile);
+                }
+            }
+
+            if (syExMess[group]._pos >= 2 + enabledProfileOffset &&
+                syExMess[group]._pos < enabledProfileOffset + syExMess[group].intbuffer1[1] * 5) {
+                uint8_t pos = (syExMess[group]._pos - 13) % 5;
+                syExMess[group].buffer1[pos] = s7Byte;
+                if (pos == 4 && recvSetProfileDisabled != nullptr) {
+                    uint8_t profile[5] = {syExMess[group].buffer1[0], syExMess[group].buffer1[1],
+                                          syExMess[group].buffer1[2], syExMess[group].buffer1[3],
+                                          syExMess[group].buffer1[4]};
+                    recvSetProfileDisabled(group, syExMess[group].remoteMUID, syExMess[group].deviceId, profile);
+                }
+            }
+            break;
+        }
 		case MIDICI_PROFILE_SETON: //Set Profile On Message
-			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
-				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
+			if(syExMess[group]._pos >= 13 && syExMess[group]._pos <= 17){
+				syExMess[group].buffer1[syExMess[group]._pos-13] = s7Byte;
 			}
-			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != nullptr){
-				uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-				recvSetProfileOn(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
+			if (syExMess[group]._pos == 16 && recvInvalidateMUID != nullptr){
+				uint8_t profile[5] = {syExMess[group].buffer1[0], syExMess[group].buffer1[1], syExMess[group].buffer1[2], syExMess[group].buffer1[3], syExMess[group].buffer1[4]};
+				recvSetProfileOn(group,syExMess[group].remoteMUID, syExMess[group].deviceId, profile);
 			}
 			break;
 		case MIDICI_PROFILE_SETOFF: //Set Profile Off Message
-			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
-				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
+			if(syExMess[group]._pos >= 13 && syExMess[group]._pos <= 17){
+				syExMess[group].buffer1[syExMess[group]._pos-13] = s7Byte;
 			}
-			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != nullptr){
-				uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-				recvSetProfileOff(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
+			if (syExMess[group]._pos == 16 && recvInvalidateMUID != nullptr){
+				uint8_t profile[5] = {syExMess[group].buffer1[0], syExMess[group].buffer1[1], syExMess[group].buffer1[2], syExMess[group].buffer1[3], syExMess[group].buffer1[4]};
+				recvSetProfileOff(group,syExMess[group].remoteMUID, syExMess[group].deviceId, profile);
 			}
 			break;	
 		case MIDICI_PROFILE_ENABLED: //Set Profile Enabled Message
-			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
-				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
+			if(syExMess[group]._pos >= 13 && syExMess[group]._pos <= 17){
+				syExMess[group].buffer1[syExMess[group]._pos-13] = s7Byte;
 			}
-			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != nullptr){
-				uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-				recvSetProfileEnabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
+			if (syExMess[group]._pos == 16 && recvInvalidateMUID != nullptr){
+				uint8_t profile[5] = {syExMess[group].buffer1[0], syExMess[group].buffer1[1], syExMess[group].buffer1[2], syExMess[group].buffer1[3], syExMess[group].buffer1[4]};
+				recvSetProfileEnabled(group,syExMess[group].remoteMUID, syExMess[group].deviceId, profile);
 			}
 			break;  
 		case MIDICI_PROFILE_DISABLED: //Set Profile Diabled Message
-			if(sysexPos[groupOffset] >= 13 && sysexPos[groupOffset] <= 17){
-				sys7CharBuffer[groupOffset][sysexPos[groupOffset]-13] = s7Byte; 
+			if(syExMess[group]._pos >= 13 && syExMess[group]._pos <= 17){
+				syExMess[group].buffer1[syExMess[group]._pos-13] = s7Byte;
 			}
-			if (sysexPos[groupOffset] == 16 && recvInvalidateMUID != nullptr){
-				uint8_t profile[5] = {sys7CharBuffer[groupOffset][0], sys7CharBuffer[groupOffset][1], sys7CharBuffer[groupOffset][2], sys7CharBuffer[groupOffset][3], sys7CharBuffer[groupOffset][4]};
-				recvSetProfileDisabled(groupOffset + groupStart,remoteMUID[groupOffset], sysUniPort[groupOffset], profile); 
+			if (syExMess[group]._pos == 16 && recvInvalidateMUID != nullptr){
+				uint8_t profile[5] = {syExMess[group].buffer1[0], syExMess[group].buffer1[1], syExMess[group].buffer1[2], syExMess[group].buffer1[3], syExMess[group].buffer1[4]};
+				recvSetProfileDisabled(group,syExMess[group].remoteMUID, syExMess[group].deviceId, profile);
 			}
 			break;  
 	}
