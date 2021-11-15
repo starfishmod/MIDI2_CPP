@@ -68,63 +68,64 @@ midi2Processor::~midi2Processor() {
 	
 }
 
-void midi2Processor::addCIHeader(uint8_t _ciType, uint8_t* sysexHeader, uint8_t _ciVer){
+void midi2Processor::createCIHeader(uint8_t* sysexHeader, MIDICI midici){
 
 	sysexHeader[0]=S7UNIVERSAL_NRT;
-	sysexHeader[1]=MIDI_PORT;
+	sysexHeader[1]=midici.deviceId;//MIDI_PORT;
 	sysexHeader[2]=S7MIDICI;
-	sysexHeader[3]=_ciType;
-	sysexHeader[4]=_ciVer;
-	setBytesFromNumbers(sysexHeader, m2procMUID, 5, 4);
+	sysexHeader[3]=midici.ciType;
+	sysexHeader[4]=midici.ciVer;
+	setBytesFromNumbers(sysexHeader, midici.localMUID, 5, 4);
+	setBytesFromNumbers(sysexHeader, midici.remoteMUID, 9, 4);
 }
 
 void midi2Processor::endSysex7(uint8_t group){
-    //syExMess[group]._state = false;
+    //midici[group]._state = false;
     //debug("endSysex7");
-    syExMess[group]._pos = 0;
-    syExMess[group].realtime = 0;
-    syExMess[group].universalId = 0;
-    syExMess[group].deviceId = 255;
-    syExMess[group].ciType = 255;
-    syExMess[group].ciVer = 255;
-    syExMess[group].remoteMUID = 0;
-    syExMess[group].destMuid = 0;
-    syExMess[group].reqPosUsed = 255;
-    memset(syExMess[group].buffer1, 0, sizeof(syExMess[group].buffer1));
-    memset(syExMess[group].intbuffer1, 0, sizeof(syExMess[group].intbuffer1));
+    syExMessInt[group].pos = 0;
+    syExMessInt[group].realtime = 0;
+    syExMessInt[group].universalId = 0;
+    midici[group].deviceId = 255;
+    midici[group].ciType = 255;
+    midici[group].ciVer = 255;
+    midici[group].remoteMUID = 0;
+    midici[group].localMUID = 0;
+    syExMessInt[group].peRequestIdx = 255;
+    memset(syExMessInt[group].buffer1, 0, sizeof(syExMessInt[group].buffer1));
+    memset(syExMessInt[group].intbuffer1, 0, sizeof(syExMessInt[group].intbuffer1));
 }
 
 void midi2Processor::startSysex7(uint8_t group){
 	//Reset ALL SYSEX etc
-    //syExMess[group]._state = false;
-    syExMess[group]._pos = 0;
+    //midici[group]._state = false;
+    syExMessInt[group].pos = 0;
 }
 
 void midi2Processor::processSysEx(uint8_t group, uint8_t s7Byte){
-	if(syExMess[group]._pos == 0){
+	if(syExMessInt[group].pos == 0){
 		if(s7Byte == S7UNIVERSAL_NRT || s7Byte == S7UNIVERSAL_RT){
-            syExMess[group].realtime =  s7Byte;
-			syExMess[group]._pos++;
+            syExMessInt[group].realtime =  s7Byte;
+			syExMessInt[group].pos++;
 			return;
 		}
 	}
 	
-	if(syExMess[group].realtime == S7UNIVERSAL_NRT || syExMess[group].realtime == S7UNIVERSAL_RT){
-		if(syExMess[group]._pos == 1){
-			syExMess[group].deviceId =  s7Byte;
-			syExMess[group]._pos++;
+	if(syExMessInt[group].realtime == S7UNIVERSAL_NRT || syExMessInt[group].realtime == S7UNIVERSAL_RT){
+		if(syExMessInt[group].pos == 1){
+			midici[group].deviceId =  s7Byte;
+			syExMessInt[group].pos++;
 			return;
 		}
 		
-		if(syExMess[group]._pos == 2){
-			syExMess[group].universalId =  s7Byte;
-			syExMess[group]._pos++;
+		if(syExMessInt[group].pos == 2){
+            syExMessInt[group].universalId =  s7Byte;
+			syExMessInt[group].pos++;
 			return;
 		}
 	}
 	
-	if(syExMess[group].realtime == S7UNIVERSAL_NRT){
-		switch(syExMess[group].universalId){
+	if(syExMessInt[group].realtime == S7UNIVERSAL_NRT){
+		switch(syExMessInt[group].universalId){
 			/*
 			case 0x00: // Sample DUMP
 			case 0x01:
@@ -169,9 +170,9 @@ void midi2Processor::processSysEx(uint8_t group, uint8_t s7Byte){
 				break;
 			
 		}
-	}else if(syExMess[group].realtime == S7UNIVERSAL_RT) {
+	}else if(syExMessInt[group].realtime == S7UNIVERSAL_RT) {
 		//This block of code represents potential future Universal SysEx Work
-		/*switch(syExMess[group].universalId){
+		/*switch(midici[group].universalId){
 			
 			case 0x01: // MIDI Time Code
 				break
@@ -202,167 +203,180 @@ void midi2Processor::processSysEx(uint8_t group, uint8_t s7Byte){
 	}else {
 		//TODO send out custom SysEx 7 byte
 	}
-	syExMess[group]._pos++;
+	syExMessInt[group].pos++;
 }
 
 void midi2Processor::processMIDICI(uint8_t group, uint8_t s7Byte){
-	if(syExMess[group]._pos == 3){
-		syExMess[group].ciType =  s7Byte;
+	if(syExMessInt[group].pos == 3){
+		midici[group].ciType =  s7Byte;
 	}
 	
-	if(syExMess[group]._pos == 4){
-	    syExMess[group].ciVer =  s7Byte;
+	if(syExMessInt[group].pos == 4){
+	    midici[group].ciVer =  s7Byte;
 	} 
-	if(syExMess[group]._pos >= 5 && syExMess[group]._pos <= 8){
-        syExMess[group].remoteMUID += s7Byte << (7 * (syExMess[group]._pos - 5));
+	if(syExMessInt[group].pos >= 5 && syExMessInt[group].pos <= 8){
+        midici[group].remoteMUID += s7Byte << (7 * (syExMessInt[group].pos - 5));
 	}
 	
-	if(syExMess[group]._pos >= 9 && syExMess[group]._pos <= 12){
-        syExMess[group].destMuid += s7Byte << (7 * (syExMess[group]._pos - 9));
+	if(syExMessInt[group].pos >= 9 && syExMessInt[group].pos <= 12){
+        midici[group].localMUID += s7Byte << (7 * (syExMessInt[group].pos - 9));
 	}
 	
-	if(syExMess[group]._pos >= 12 && syExMess[group].destMuid != m2procMUID && syExMess[group].destMuid != M2_CI_BROADCAST){
+	if(syExMessInt[group].pos >= 12
+       && midici[group].localMUID != M2_CI_BROADCAST
+       && checkMUID && !checkMUID(group, midici[group].localMUID)
+        ){
 		//Serial.println("  -> Not for this device ");
 		return; //Not for this device
 	}
 	
 	//break up each Process based on ciType
-	switch (syExMess[group].ciType){
-		case MIDICI_DISCOVERY: //Discovery Request'
-			//debug("  - Discovery Request ");//debug(syExMess[group]._pos);debug(s7Byte);
-			if(syExMess[group]._pos >= 13 && syExMess[group]._pos <= 23){
-				syExMess[group].buffer1[syExMess[group]._pos-13] = s7Byte;
-			}
-            if(syExMess[group]._pos == 24){
-                syExMess[group].intbuffer1[0] = s7Byte; // ciSupport
-            }
-            if(syExMess[group]._pos >= 25 && syExMess[group]._pos <= 28){
-                syExMess[group].intbuffer1[1] += s7Byte << (7 * (syExMess[group]._pos - 25)); //maxSysEx
-            }
-			if(syExMess[group]._pos==28){
-				//debug("  - Discovery Request 28 ");
-				if (recvDiscoveryRequest != nullptr){
-					uint8_t manuIdR[3] = {syExMess[group].buffer1[0], syExMess[group].buffer1[1], syExMess[group].buffer1[2]};
-					uint8_t famIdR[2] = {syExMess[group].buffer1[3], syExMess[group].buffer1[4]};
-					uint8_t modelIdR[2] = {syExMess[group].buffer1[5], syExMess[group].buffer1[6]};
-					uint8_t verR[4] = {syExMess[group].buffer1[7], syExMess[group].buffer1[8], syExMess[group].buffer1[9], syExMess[group].buffer1[10]};
-					recvDiscoveryRequest(
-						group,
-						syExMess[group].remoteMUID,
-						syExMess[group].ciVer,
-						manuIdR,
-						famIdR,
-						modelIdR,
-						verR,
-                        syExMess[group].intbuffer1[0],
-                        syExMess[group].intbuffer1[1]
-					);
-				}
-				
-				//Send Discovery Reply
-				//debug("  -> Discovery Reply ");
-				if(sendOutSysex == nullptr) return;
-				//debug("  -> Discovery Reply 2");
-				
-				uint8_t sysex[13];
-				addCIHeader(MIDICI_DISCOVERYREPLY,sysex,0x01);
-				setBytesFromNumbers(sysex, syExMess[group].remoteMUID, 9, 4);
-				
-				sendOutSysex(group,sysex,13,1);
-				sendOutSysex(group,sysexId,3,2);
-				sendOutSysex(group,famId,2,2);
-				sendOutSysex(group,modelId,2,2);
-				sendOutSysex(group,ver,4,2);
-				
-				//Capabilities
-				sysex[0]=ciSupport; 					
-				setBytesFromNumbers(sysex, sysExMax, 1, 4);
-				sendOutSysex(group,sysex,5,3);
-				
-			}
-
-			break;
-		case MIDICI_DISCOVERYREPLY: //Discovery Reply'
-            if(syExMess[group]._pos >= 13 && syExMess[group]._pos <= 23){
-                syExMess[group].buffer1[syExMess[group]._pos-13] = s7Byte;
-            }
-            if(syExMess[group]._pos == 24){
-                syExMess[group].intbuffer1[0] = s7Byte; // ciSupport
-            }
-            if(syExMess[group]._pos >= 25 && syExMess[group]._pos <= 28){
-                syExMess[group].intbuffer1[1] += s7Byte << (7 * (syExMess[group]._pos - 25)); //maxSysEx
-            }
-			if(syExMess[group]._pos==28){
-				if (recvDiscoveryReply != nullptr){
-					uint8_t manuIdR[3] = {syExMess[group].buffer1[0], syExMess[group].buffer1[1], syExMess[group].buffer1[2]};
-					uint8_t famIdR[2] = {syExMess[group].buffer1[3], syExMess[group].buffer1[4]};
-					uint8_t modelIdR[2] = {syExMess[group].buffer1[5], syExMess[group].buffer1[6]};
-					uint8_t verR[4] = {syExMess[group].buffer1[7], syExMess[group].buffer1[8], syExMess[group].buffer1[9], syExMess[group].buffer1[10]};
-					recvDiscoveryReply(
-						group,
-						syExMess[group].remoteMUID,
-						syExMess[group].ciVer,
-						manuIdR,
-						famIdR,
-						modelIdR,
-						verR,
-                        syExMess[group].intbuffer1[0],
-                        syExMess[group].intbuffer1[1]
+    if(syExMessInt[group].pos >= 12) {
+        switch (midici[group].ciType) {
+            case MIDICI_DISCOVERY: //Discovery Request'
+                //debug("  - Discovery Request ");//debug(syExMessInt[group].pos);debug(s7Byte);
+                if (syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 23) {
+                    syExMessInt[group].buffer1[syExMessInt[group].pos - 13] = s7Byte;
+                }
+                if (syExMessInt[group].pos == 24) {
+                    syExMessInt[group].intbuffer1[0] = s7Byte; // ciSupport
+                }
+                if (syExMessInt[group].pos >= 25 && syExMessInt[group].pos <= 28) {
+                    syExMessInt[group].intbuffer1[1] += s7Byte << (7 * (syExMessInt[group].pos - 25)); //maxSysEx
+                }
+                if (syExMessInt[group].pos == 28) {
+                    //debug("  - Discovery Request 28 ");
+                    if (recvDiscoveryRequest != nullptr) {
+                        uint8_t manuIdR[3] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1],
+                                              syExMessInt[group].buffer1[2]};
+                        uint8_t famIdR[2] = {syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
+                        uint8_t modelIdR[2] = {syExMessInt[group].buffer1[5], syExMessInt[group].buffer1[6]};
+                        uint8_t verR[4] = {syExMessInt[group].buffer1[7], syExMessInt[group].buffer1[8],
+                                           syExMessInt[group].buffer1[9], syExMessInt[group].buffer1[10]};
+                        recvDiscoveryRequest(
+                                group,
+                                midici[group],
+                                manuIdR,
+                                famIdR,
+                                modelIdR,
+                                verR,
+                                syExMessInt[group].intbuffer1[0],
+                                syExMessInt[group].intbuffer1[1]
                         );
-				}
-			}
-			break;
-			
-		case MIDICI_INVALIDATEMUID: //MIDI-CI Invalidate MUID Message
-			if(syExMess[group]._pos == 13){
-				syExMess[group].destMuid = 0;
-			}
-		
-			if(syExMess[group]._pos >= 13 && syExMess[group]._pos <= 16){
-				syExMess[group].destMuid += s7Byte << (7 * (syExMess[group]._pos - 13));
-			}
-		
-			if (syExMess[group]._pos == 16 && recvInvalidateMUID != nullptr){
-				recvInvalidateMUID(group,syExMess[group].remoteMUID, syExMess[group].destMuid);
-			}
-			break;	
-		case MIDICI_NAK: //MIDI-CI NAK
-			if (recvNAK != nullptr){
-				recvNAK(group,syExMess[group].remoteMUID);
-			}
-			break;
-			
-		#ifndef M2_DISABLE_PROTOCOL
-		#endif     
-		
-		#ifndef M2_DISABLE_PROFILE  
-		case 0x20: //Profile Inquiry
-		case 0x21: //Reply to Profile Inquiry
-		case 0x22: //Set Profile On Message
-		case 0x23: //Set Profile Off Message	
-		case 0x24: //Set Profile Enabled Message  
-		case 0x25: //Set Profile Disabled Message
-		case 0x2F: //ProfileSpecific Data
-			processProfileSysex(group, s7Byte);
-			break;   
-		#endif   
-		
-		
-		#ifndef M2_DISABLE_PE 
-		case 0x30: //Inquiry: Property Exchange Capabilities
-		case 0x31: //Reply to Property Exchange Capabilities			
-		case 0x34:  // Inquiry: Get Property Data
-		case 0x35: // Reply To Get Property Data - Needs Work!
-		case 0x36: // Inquiry: Set Property Data
-		case 0x37: // Reply To Inquiry: Set Property Data
-		case 0x38: // Inquiry: Subscribe Property Data
-		case 0x39: // Reply To Subscribe Property Data
-		case 0x3F: // Notify
-			processPESysex(group, s7Byte);
-			break;
-		#endif   
-	
-	}
+                    }
+
+                    //Send Discovery Reply
+                    //debug("  -> Discovery Reply ");
+                    /*if(sendOutSysex == nullptr) return;
+                    //debug("  -> Discovery Reply 2");
+
+                    uint8_t sysex[13];
+                    addCIHeader(MIDICI_DISCOVERYREPLY,sysex,0x01);
+                    setBytesFromNumbers(sysex, midici[group].remoteMUID, 9, 4);
+
+                    sendOutSysex(group,sysex,13,1);
+                    sendOutSysex(group,sysexId,3,2);
+                    sendOutSysex(group,famId,2,2);
+                    sendOutSysex(group,modelId,2,2);
+                    sendOutSysex(group,ver,4,2);
+
+                    //Capabilities
+                    sysex[0]=ciSupport;
+                    setBytesFromNumbers(sysex, sysExMax, 1, 4);
+                    sendOutSysex(group,sysex,5,3);*/
+
+                }
+
+                break;
+            case MIDICI_DISCOVERYREPLY: //Discovery Reply'
+                if (syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 23) {
+                    syExMessInt[group].buffer1[syExMessInt[group].pos - 13] = s7Byte;
+                }
+                if (syExMessInt[group].pos == 24) {
+                    syExMessInt[group].intbuffer1[0] = s7Byte; // ciSupport
+                }
+                if (syExMessInt[group].pos >= 25 && syExMessInt[group].pos <= 28) {
+                    syExMessInt[group].intbuffer1[1] += s7Byte << (7 * (syExMessInt[group].pos - 25)); //maxSysEx
+                }
+                if (syExMessInt[group].pos == 28) {
+                    if (recvDiscoveryReply != nullptr) {
+                        uint8_t manuIdR[3] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1],
+                                              syExMessInt[group].buffer1[2]};
+                        uint8_t famIdR[2] = {syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
+                        uint8_t modelIdR[2] = {syExMessInt[group].buffer1[5], syExMessInt[group].buffer1[6]};
+                        uint8_t verR[4] = {syExMessInt[group].buffer1[7], syExMessInt[group].buffer1[8],
+                                           syExMessInt[group].buffer1[9], syExMessInt[group].buffer1[10]};
+                        recvDiscoveryReply(
+                                group,
+                                midici[group],
+                                manuIdR,
+                                famIdR,
+                                modelIdR,
+                                verR,
+                                syExMessInt[group].intbuffer1[0],
+                                syExMessInt[group].intbuffer1[1]
+                        );
+                    }
+                }
+                break;
+
+            case MIDICI_INVALIDATEMUID: //MIDI-CI Invalidate MUID Message
+                if (syExMessInt[group].pos == 13) {
+                    midici[group].localMUID = 0;
+                }
+
+                if (syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 16) {
+                    midici[group].localMUID += s7Byte << (7 * (syExMessInt[group].pos - 13));
+                }
+                //THis needs fixing - don't use localMUID for terminate
+                if (syExMessInt[group].pos == 16 && recvInvalidateMUID != nullptr) {
+                    recvInvalidateMUID(group, midici[group], midici[group].localMUID);
+                }
+                break;
+            case MIDICI_NAK: //MIDI-CI NAK
+                if (recvNAK != nullptr) {
+                    recvNAK(group, midici[group]);
+                }
+                break;
+
+#ifndef M2_DISABLE_PROTOCOL
+#endif
+
+#ifndef M2_DISABLE_PROFILE
+            case 0x20: //Profile Inquiry
+            case 0x21: //Reply to Profile Inquiry
+            case 0x22: //Set Profile On Message
+            case 0x23: //Set Profile Off Message
+            case 0x24: //Set Profile Enabled Message
+            case 0x25: //Set Profile Disabled Message
+            case 0x2F: //ProfileSpecific Data
+                processProfileSysex(group, s7Byte);
+                break;
+#endif
+
+
+#ifndef M2_DISABLE_PE
+            case 0x30: //Inquiry: Property Exchange Capabilities
+            case 0x31: //Reply to Property Exchange Capabilities
+            case 0x34:  // Inquiry: Get Property Data
+            case 0x35: // Reply To Get Property Data - Needs Work!
+            case 0x36: // Inquiry: Set Property Data
+            case 0x37: // Reply To Inquiry: Set Property Data
+            case 0x38: // Inquiry: Subscribe Property Data
+            case 0x39: // Reply To Subscribe Property Data
+            case 0x3F: // Notify
+                processPESysex(group, s7Byte);
+                break;
+#endif
+
+            default:
+                if (recvUnknownMIDICI) {
+                    recvUnknownMIDICI(group, &syExMessInt[group], midici[group], s7Byte);
+                }
+                break;
+
+        }
+    }
 }
 
 void midi2Processor::processUMP(uint32_t UMP){
@@ -574,12 +588,18 @@ void midi2Processor::processUMP(uint32_t UMP){
 	
 }
 
-void midi2Processor::sendDiscoveryRequest(uint8_t group, uint8_t ciVersion){
+void midi2Processor::sendDiscoveryRequest(uint8_t group, uint32_t srcMUID,
+                                          uint8_t* sysexId, uint8_t* famId,
+                                          uint8_t* modelId, uint8_t* ver,
+                                          uint8_t ciSupport, uint16_t sysExMax
+                   ){
 	if(sendOutSysex == nullptr) return;
 	
 	uint8_t sysex[13];
-	addCIHeader(MIDICI_DISCOVERY,sysex,ciVersion);
-	setBytesFromNumbers(sysex, M2_CI_BROADCAST, 9, 4);
+    MIDICI midici;
+    midici.ciType = MIDICI_DISCOVERY;
+    midici.localMUID = srcMUID;
+    createCIHeader(sysex, midici);
 	sendOutSysex(group,sysex,13,1);
 	sendOutSysex(group,sysexId,3,2);
 	sendOutSysex(group,famId,2,2);
@@ -592,19 +612,50 @@ void midi2Processor::sendDiscoveryRequest(uint8_t group, uint8_t ciVersion){
 	sendOutSysex(group,sysex,5,3);
 }
 
-void midi2Processor::sendNAK(uint8_t group, uint32_t _remoteMuid, uint8_t ciVersion){
+void midi2Processor::sendDiscoveryReply(uint8_t group,  uint32_t srcMUID, uint32_t destMuid,
+                                          uint8_t* sysexId, uint8_t* famId,
+                                          uint8_t* modelId, uint8_t* ver,
+                                          uint8_t ciSupport, uint16_t sysExMax
+){
+    if(sendOutSysex == nullptr) return;
+
+    uint8_t sysex[13];
+    MIDICI midici;
+    midici.ciType = MIDICI_DISCOVERYREPLY;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
+    createCIHeader(sysex, midici);
+
+    sendOutSysex(group,sysex,13,1);
+    sendOutSysex(group,sysexId,3,2);
+    sendOutSysex(group,famId,2,2);
+    sendOutSysex(group,modelId,2,2);
+    sendOutSysex(group,ver,4,2);
+
+    //Capabilities
+    sysex[0]=ciSupport;
+    setBytesFromNumbers(sysex, sysExMax, 1, 4);
+    sendOutSysex(group,sysex,5,3);
+}
+
+void midi2Processor::sendNAK(uint8_t group, uint32_t srcMUID, uint32_t destMuid){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-	addCIHeader(MIDICI_NAK,sysex,ciVersion);
-	setBytesFromNumbers(sysex, _remoteMuid, 9, 4);
+    MIDICI midici;
+    midici.ciType = MIDICI_NAK;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
+    createCIHeader(sysex, midici);
 	sendOutSysex(group,sysex,13,0);
 }
 
-void midi2Processor::sendInvalidateMUID(uint8_t group, uint32_t terminateMuid, uint8_t ciVersion){
+void midi2Processor::sendInvalidateMUID(uint8_t group, uint32_t srcMUID, uint32_t terminateMuid){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-	addCIHeader(MIDICI_INVALIDATEMUID,sysex,ciVersion);
-	setBytesFromNumbers(sysex, M2_CI_BROADCAST, 9, 4);
+    MIDICI midici;
+    midici.ciType = MIDICI_INVALIDATEMUID;
+    midici.localMUID = srcMUID;
+    createCIHeader(sysex, midici);
 	sendOutSysex(group,sysex,13,1);
 	setBytesFromNumbers(sysex, terminateMuid, 0, 4);
 	sendOutSysex(group,sysex,4,3);
@@ -618,10 +669,10 @@ void midi2Processor::sendIdentityRequest (uint8_t group){
 	sendOutSysex(group,sysex,4,0);
 }
 void midi2Processor::processDeviceID(uint8_t group, uint8_t s7Byte){
-	if(syExMess[group]._pos == 3 && s7Byte == 0x01){
+	if(syExMessInt[group].pos == 3 && s7Byte == 0x01){
 		//Identity Request - send a reply?
 		//Serial.println("  -Identity Request - send a reply");
-		uint8_t sysex[]={
+		/*uint8_t sysex[]={
 			S7UNIVERSAL_NRT,MIDI_PORT,S7IDREQUEST,0x02
 			,sysexId[0],sysexId[1],sysexId[2] //SyexId
 			,famId[0],famId[1] //family id
@@ -629,24 +680,25 @@ void midi2Processor::processDeviceID(uint8_t group, uint8_t s7Byte){
 			,ver[0],ver[1],ver[2],ver[3] //version id
 		};
 		
-		if(sendOutSysex != nullptr) sendOutSysex(group, sysex,15,0);
+		if(sendOutSysex != nullptr) sendOutSysex(group, sysex,15,0);*/
+        if(recvIdRequest != nullptr) recvIdRequest(group);
 		
 	}
-	if(syExMess[group]._pos == 3 && s7Byte == 0x02){
+	if(syExMessInt[group].pos == 3 && s7Byte == 0x02){
 		//Identity Reply
-		syExMess[group].buffer1[0] = s7Byte;
+		syExMessInt[group].buffer1[0] = s7Byte;
 	}
-	if(syExMess[group].buffer1[0] == 0x02){
-		if(syExMess[group]._pos >= 4 && syExMess[group]._pos <= 14){
-			syExMess[group].buffer1[syExMess[group]._pos-3] = s7Byte;
+	if(syExMessInt[group].buffer1[0] == 0x02){
+		if(syExMessInt[group].pos >= 4 && syExMessInt[group].pos <= 14){
+			syExMessInt[group].buffer1[syExMessInt[group].pos-3] = s7Byte;
 		}
 
-		if (syExMess[group]._pos == 14 && sendOutIdResponse != nullptr){
-			uint8_t manuIdR[3] = {syExMess[group].buffer1[1], syExMess[group].buffer1[2], syExMess[group].buffer1[3]};
-			uint8_t famIdR[2] = {syExMess[group].buffer1[4], syExMess[group].buffer1[5]};
-			uint8_t modelIdR[2] = {syExMess[group].buffer1[6], syExMess[group].buffer1[7]};
-			uint8_t verR[4] = {syExMess[group].buffer1[8], syExMess[group].buffer1[9], syExMess[group].buffer1[10], syExMess[group].buffer1[11]};
-			sendOutIdResponse(manuIdR, famIdR, modelIdR, verR);
+		if (syExMessInt[group].pos == 14 && recvIdResponse != nullptr){
+			uint8_t manuIdR[3] = {syExMessInt[group].buffer1[1], syExMessInt[group].buffer1[2], syExMessInt[group].buffer1[3]};
+			uint8_t famIdR[2] = {syExMessInt[group].buffer1[4], syExMessInt[group].buffer1[5]};
+			uint8_t modelIdR[2] = {syExMessInt[group].buffer1[6], syExMessInt[group].buffer1[7]};
+			uint8_t verR[4] = {syExMessInt[group].buffer1[8], syExMessInt[group].buffer1[9], syExMessInt[group].buffer1[10], syExMessInt[group].buffer1[11]};
+            recvIdResponse(group, manuIdR, famIdR, modelIdR, verR);
 		}
 	}
 }

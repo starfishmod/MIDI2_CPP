@@ -6,114 +6,105 @@
 #include <cstring>
 
 void midi2Processor::processPESysex(uint8_t group, uint8_t s7Byte){
-	uint8_t reqPosUsed;
+	uint8_t peRequestIdx;
 	
-	if(syExMess[group].ciType == MIDICI_PE_CAPABILITY && syExMess[group]._pos == 13){
-		uint8_t sysex[14];
-		addCIHeader(MIDICI_PE_CAPABILITYREPLY, sysex, 0x01);
-		setBytesFromNumbers(sysex, syExMess[group].remoteMUID, 9, 4);
-		//Simultaneous Requests Supports
-		sysex[13]=numRequests;
-		if(sendOutSysex != nullptr) sendOutSysex(group,sysex,14,0);
-		
-		if(recvPECapabilities != nullptr)recvPECapabilities(group,syExMess[group].remoteMUID, s7Byte);
-			
+	if(midici[group].ciType == MIDICI_PE_CAPABILITY && syExMessInt[group].pos == 13){
+		if(recvPECapabilities != nullptr)recvPECapabilities(group,midici[group], s7Byte);
 	} else
-	if(syExMess[group].ciType == MIDICI_PE_CAPABILITYREPLY && syExMess[group]._pos == 13 && recvPECapabilities != nullptr){
-		recvPECapabilities(group,syExMess[group].remoteMUID, s7Byte);
-		
+	if(midici[group].ciType == MIDICI_PE_CAPABILITYREPLY && syExMessInt[group].pos == 13){
+        if(recvPECapabilities != nullptr)recvPECapabilitiesReplies(group,midici[group], s7Byte);
 	} else {
-        if(syExMess[group]._pos == 13){
-            syExMess[group].reqPosUsed = getPERequestId(group, s7Byte);
+        if(syExMessInt[group].pos == 13){
+            syExMessInt[group].peRequestIdx = getPERequestId(group, midici[group].remoteMUID, s7Byte);
             return;
         }
 
-        if(syExMess[group]._pos > 13){
-            reqPosUsed=syExMess[group].reqPosUsed;
-            if(reqPosUsed == 255){
+        if(syExMessInt[group].pos > 13){
+            peRequestIdx=syExMessInt[group].peRequestIdx;
+            if(peRequestIdx == 255){
                 //Ignore this Get Message
                 return;
             }
         }
 
-        if(syExMess[group]._pos == 14 || syExMess[group]._pos == 15){ //header Length
-            syExMess[group].intbuffer1[0] += s7Byte << (7 * (syExMess[group]._pos - 14 ));
+        if(syExMessInt[group].pos == 14 || syExMessInt[group].pos == 15){ //header Length
+            syExMessInt[group].intbuffer1[0] += s7Byte << (7 * (syExMessInt[group].pos - 14 ));
             return;
         }
 
-		uint16_t headerLength = syExMess[group].intbuffer1[0];
+		uint16_t headerLength = syExMessInt[group].intbuffer1[0];
 		
-		if(syExMess[group]._pos >= 16 && syExMess[group]._pos <= 15 + headerLength){
-			processPEHeader(group, reqPosUsed, s7Byte);
+		if(syExMessInt[group].pos >= 16 && syExMessInt[group].pos <= 15 + headerLength){
+			processPEHeader(group, peRequestIdx, s7Byte);
 
-            if(syExMess[group]._pos == 15 + headerLength
+            if(syExMessInt[group].pos == 15 + headerLength
                 && (
-                    syExMess[group].ciType == MIDICI_PE_GET
-                    || syExMess[group].ciType == MIDICI_PE_SETREPLY
-                    || syExMess[group].ciType == MIDICI_PE_SUBREPLY
+                    midici[group].ciType == MIDICI_PE_GET
+                    || midici[group].ciType == MIDICI_PE_SETREPLY
+                    || midici[group].ciType == MIDICI_PE_SUBREPLY
                     )
             ){
-                if(syExMess[group].ciType == MIDICI_PE_GET && recvPEGetInquiry != nullptr){
-                    recvPEGetInquiry(group, syExMess[group].remoteMUID, peRquestDetails[reqPosUsed]);
+                if(midici[group].ciType == MIDICI_PE_GET && recvPEGetInquiry != nullptr){
+                    recvPEGetInquiry(group, midici[group], peRquestDetails[peRequestIdx]);
                 }
-                if(syExMess[group].ciType == MIDICI_PE_SETREPLY && recvPESetReply != nullptr){
-                    recvPESetReply(group, syExMess[group].remoteMUID, peRquestDetails[reqPosUsed]);
+                if(midici[group].ciType == MIDICI_PE_SETREPLY && recvPESetReply != nullptr){
+                    recvPESetReply(group, midici[group], peRquestDetails[peRequestIdx]);
                 }
-                if(syExMess[group].ciType == MIDICI_PE_SUBREPLY && recvPESubReply != nullptr){
-                    recvPESubReply(group, syExMess[group].remoteMUID, peRquestDetails[reqPosUsed]);
+                if(midici[group].ciType == MIDICI_PE_SUBREPLY && recvPESubReply != nullptr){
+                    recvPESubReply(group, midici[group], peRquestDetails[peRequestIdx]);
                 }
-                cleanupRequestId(peRquestDetails[reqPosUsed].requestId);
-            }else if(syExMess[group]._pos == 15 + headerLength){
-                peRquestDetails[reqPosUsed].totalChunks = 0;
-                peRquestDetails[reqPosUsed].numChunks = 0;
+                cleanupRequestId(group, midici[group].remoteMUID, peRquestDetails[peRequestIdx].requestId);
+            }else if(syExMessInt[group].pos == 15 + headerLength){
+                peRquestDetails[peRequestIdx].totalChunks = 0;
+                peRquestDetails[peRequestIdx].numChunks = 0;
             }
             return;
         }
 
-		if(syExMess[group]._pos == 16 + headerLength || syExMess[group]._pos == 17 + headerLength){
-			peRquestDetails[reqPosUsed].totalChunks += s7Byte << (7 * (syExMess[group]._pos - 16 - headerLength ));
+		if(syExMessInt[group].pos == 16 + headerLength || syExMessInt[group].pos == 17 + headerLength){
+			peRquestDetails[peRequestIdx].totalChunks += s7Byte << (7 * (syExMessInt[group].pos - 16 - headerLength ));
             return;
         }
 
-		if(syExMess[group]._pos == 18 + headerLength  || syExMess[group]._pos == 19 + headerLength){
-			peRquestDetails[reqPosUsed].numChunks += s7Byte << (7 * (syExMess[group]._pos - 18 - headerLength ));
+		if(syExMessInt[group].pos == 18 + headerLength  || syExMessInt[group].pos == 19 + headerLength){
+			peRquestDetails[peRequestIdx].numChunks += s7Byte << (7 * (syExMessInt[group].pos - 18 - headerLength ));
             return;
 		}
 
 		
-		if(syExMess[group]._pos == 20 + headerLength || syExMess[group]._pos == 21 + headerLength){ //Body Length
-			syExMess[group].intbuffer1[1] += s7Byte << (7 * (syExMess[group]._pos - 20 - headerLength ));
+		if(syExMessInt[group].pos == 20 + headerLength || syExMessInt[group].pos == 21 + headerLength){ //Body Length
+			syExMessInt[group].intbuffer1[1] += s7Byte << (7 * (syExMessInt[group].pos - 20 - headerLength ));
 		}
 
-		uint16_t bodyLength = syExMess[group].intbuffer1[1];
+		uint16_t bodyLength = syExMessInt[group].intbuffer1[1];
         uint16_t initPos = 22 + headerLength;
-        uint8_t charOffset = (syExMess[group]._pos - initPos) % PE_HEAD_BUFFERLEN;
+        uint8_t charOffset = (syExMessInt[group].pos - initPos) % PE_HEAD_BUFFERLEN;
 
 		if(
-			(syExMess[group]._pos >= initPos && syExMess[group]._pos <= initPos - 1 + bodyLength)
-			|| 	(bodyLength == 0 && syExMess[group]._pos == initPos -1)
+			(syExMessInt[group].pos >= initPos && syExMessInt[group].pos <= initPos - 1 + bodyLength)
+			|| 	(bodyLength == 0 && syExMessInt[group].pos == initPos -1)
 		){
-			if(bodyLength != 0 )syExMess[group].buffer1[charOffset] = s7Byte;
+			if(bodyLength != 0 )syExMessInt[group].buffer1[charOffset] = s7Byte;
 
-            bool lastByteOfSet = (peRquestDetails[reqPosUsed].numChunks == peRquestDetails[reqPosUsed].totalChunks && syExMess[group]._pos == initPos - 1 + bodyLength);
+            bool lastByteOfSet = (peRquestDetails[peRequestIdx].numChunks == peRquestDetails[peRequestIdx].totalChunks && syExMessInt[group].pos == initPos - 1 + bodyLength);
 			
 			if(charOffset == PE_HEAD_BUFFERLEN -1 
-				|| syExMess[group]._pos == initPos - 1 + bodyLength
+				|| syExMessInt[group].pos == initPos - 1 + bodyLength
 				|| bodyLength == 0 
 			){
-				if(syExMess[group].ciType == MIDICI_PE_SUB && recvPESubInquiry != nullptr){
-					recvPESubInquiry(group, syExMess[group].remoteMUID, peRquestDetails[reqPosUsed], charOffset+1, syExMess[group].buffer1, lastByteOfSet);
+				if(midici[group].ciType == MIDICI_PE_SUB && recvPESubInquiry != nullptr){
+					recvPESubInquiry(group, midici[group], peRquestDetails[peRequestIdx], charOffset+1, syExMessInt[group].buffer1, lastByteOfSet);
 				}
 				
-				if(syExMess[group].ciType == MIDICI_PE_SET && recvPESetInquiry != nullptr){
-					recvPESetInquiry(group, syExMess[group].remoteMUID, peRquestDetails[reqPosUsed], charOffset+1, syExMess[group].buffer1, lastByteOfSet);
+				if(midici[group].ciType == MIDICI_PE_SET && recvPESetInquiry != nullptr){
+					recvPESetInquiry(group, midici[group], peRquestDetails[peRequestIdx], charOffset+1, syExMessInt[group].buffer1, lastByteOfSet);
 				}
 
-                peRquestDetails[reqPosUsed].partialChunkCount++;
+                peRquestDetails[peRequestIdx].partialChunkCount++;
 			} 
 			
 			if(lastByteOfSet){
-				cleanupRequestId(peRquestDetails[reqPosUsed].requestId); 
+				cleanupRequestId(group, midici[group].remoteMUID, peRquestDetails[peRequestIdx].requestId);
 			}
 		}
 			
@@ -121,194 +112,199 @@ void midi2Processor::processPESysex(uint8_t group, uint8_t s7Byte){
 	
 }
 
-uint8_t midi2Processor::getPERequestId(uint8_t group, uint8_t s7Byte){
-    uint8_t reqPosUsed = 255;
 
-    for(uint8_t i =0;i<numRequests;i++){
-        if(peRquestDetails[i].requestId == s7Byte){
-            return i;
 
-        }else if(peRquestDetails[i].requestId == 255){
-            peRquestDetails[i].requestId = s7Byte;
-            return i;
-        }
-    }
-    return reqPosUsed;
-}
-
-void midi2Processor::processPEHeader(uint8_t group, uint8_t reqPosUsed, uint8_t s7Byte){
+void midi2Processor::processPEHeader(uint8_t group, uint8_t peRequestIdx, uint8_t s7Byte){
 
     /*char messStr[20];
-    sprintf(messStr," p: %d %c",peRquestDetails[reqPosUsed]._headerPos, s7Byte);
+    sprintf(messStr," p: %d %c",peRquestDetails[peRequestIdx]._headerPos, s7Byte);
     debug(messStr);*/
 
 	int clear=0;
 
-	if((peRquestDetails[reqPosUsed]._headerState & 0xF) == PE_HEAD_STATE_IN_STRING){
-		if (s7Byte == '"' && syExMess[group].buffer1[peRquestDetails[reqPosUsed]._headerPos-1]!='\\') {
-			if((peRquestDetails[reqPosUsed]._headerState & 0xF0) == PE_HEAD_KEY){
-                peRquestDetails[reqPosUsed]._pvoid = nullptr;
-                peRquestDetails[reqPosUsed]._headerProp = 0;
-				if(!strcmp((const char*)syExMess[group].buffer1,"resource")){
-                    peRquestDetails[reqPosUsed]._pvoid = &peRquestDetails[reqPosUsed].resource;
-                    peRquestDetails[reqPosUsed]._headerProp = 1;
+	if((peRquestDetails[peRequestIdx]._headerState & 0xF) == PE_HEAD_STATE_IN_STRING){
+		if (s7Byte == '"' && syExMessInt[group].buffer1[peRquestDetails[peRequestIdx]._headerPos-1]!='\\') {
+			if((peRquestDetails[peRequestIdx]._headerState & 0xF0) == PE_HEAD_KEY){
+                peRquestDetails[peRequestIdx]._pvoid = nullptr;
+                peRquestDetails[peRequestIdx]._headerProp = 0;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"resource")){
+                    peRquestDetails[peRequestIdx]._pvoid = &peRquestDetails[peRequestIdx].resource;
+                    peRquestDetails[peRequestIdx]._headerProp = 1;
 				}
-                if(!strcmp((const char*)syExMess[group].buffer1,"path")){
-                    peRquestDetails[reqPosUsed]._pvoid = &peRquestDetails[reqPosUsed].path;
-                    peRquestDetails[reqPosUsed]._headerProp = 1;
+                if(!strcmp((const char*)syExMessInt[group].buffer1,"path")){
+                    peRquestDetails[peRequestIdx]._pvoid = &peRquestDetails[peRequestIdx].path;
+                    peRquestDetails[peRequestIdx]._headerProp = 1;
                 }
-                if(!strcmp((const char*)syExMess[group].buffer1,"mediaType")){
-                    peRquestDetails[reqPosUsed]._pvoid = &peRquestDetails[reqPosUsed].mediaType;
-                    peRquestDetails[reqPosUsed]._headerProp = 1;
+                if(!strcmp((const char*)syExMessInt[group].buffer1,"mediaType")){
+                    peRquestDetails[peRequestIdx]._pvoid = &peRquestDetails[peRequestIdx].mediaType;
+                    peRquestDetails[peRequestIdx]._headerProp = 1;
                 }
-				if(!strcmp((const char*)syExMess[group].buffer1,"command")){
-					//_pvoid = &peRquestDetails[reqPosUsed].command;
-                    peRquestDetails[reqPosUsed]._headerProp = 1;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"command")){
+					//_pvoid = &peRquestDetails[peRequestIdx].command;
+                    peRquestDetails[peRequestIdx]._headerProp = 1;
 				}
-                if(!strcmp((const char*)syExMess[group].buffer1,"action")){
-					//_pvoid = &peRquestDetails[reqPosUsed].command;
-                    peRquestDetails[reqPosUsed]._headerProp = 2;
+                if(!strcmp((const char*)syExMessInt[group].buffer1,"action")){
+					//_pvoid = &peRquestDetails[peRequestIdx].command;
+                    peRquestDetails[peRequestIdx]._headerProp = 2;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"resId")){
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"resId")){
                    // debug("resId!");
-                    peRquestDetails[reqPosUsed]._pvoid = &peRquestDetails[reqPosUsed].resId;
-                    peRquestDetails[reqPosUsed]._headerProp = 1;
+                    peRquestDetails[peRequestIdx]._pvoid = &peRquestDetails[peRequestIdx].resId;
+                    peRquestDetails[peRequestIdx]._headerProp = 1;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"subscribeId")){
-                    peRquestDetails[reqPosUsed]._pvoid = &peRquestDetails[reqPosUsed].subscribeId;
-                    peRquestDetails[reqPosUsed]._headerProp = 1;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"subscribeId")){
+                    peRquestDetails[peRequestIdx]._pvoid = &peRquestDetails[peRequestIdx].subscribeId;
+                    peRquestDetails[peRequestIdx]._headerProp = 1;
 				}
-                if(!strcmp((const char*)syExMess[group].buffer1,"status")){
-                    peRquestDetails[reqPosUsed]._pvoid = &peRquestDetails[reqPosUsed].status;
+                if(!strcmp((const char*)syExMessInt[group].buffer1,"status")){
+                    peRquestDetails[peRequestIdx]._pvoid = &peRquestDetails[peRequestIdx].status;
                 }
-				if(!strcmp((const char*)syExMess[group].buffer1,"offset")){
-                    peRquestDetails[reqPosUsed]._pvoid = &peRquestDetails[reqPosUsed].offset;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"offset")){
+                    peRquestDetails[peRequestIdx]._pvoid = &peRquestDetails[peRequestIdx].offset;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"limit")){
-                    peRquestDetails[reqPosUsed]._pvoid = &peRquestDetails[reqPosUsed].limit;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"limit")){
+                    peRquestDetails[peRequestIdx]._pvoid = &peRquestDetails[peRequestIdx].limit;
 				}
-                if(!strcmp((const char*)syExMess[group].buffer1,"setPartial")){
-                    peRquestDetails[reqPosUsed]._pvoid = &peRquestDetails[reqPosUsed].partial;
+                if(!strcmp((const char*)syExMessInt[group].buffer1,"setPartial")){
+                    peRquestDetails[peRequestIdx]._pvoid = &peRquestDetails[peRequestIdx].partial;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"mutualEncoding")){
-                    peRquestDetails[reqPosUsed]._headerProp = 3;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"mutualEncoding")){
+                    peRquestDetails[peRequestIdx]._headerProp = 3;
 				}
 			}
-            else if(peRquestDetails[reqPosUsed]._pvoid != nullptr){
-                if(peRquestDetails[reqPosUsed]._headerProp == 0){
-                    memcpy(peRquestDetails[reqPosUsed]._pvoid, syExMess[group].buffer1, PE_HEAD_BUFFERLEN * sizeof(char));
+            else if(peRquestDetails[peRequestIdx]._pvoid != nullptr){
+                if(peRquestDetails[peRequestIdx]._headerProp == 0){
+                    memcpy(peRquestDetails[peRequestIdx]._pvoid, syExMessInt[group].buffer1, PE_HEAD_BUFFERLEN * sizeof(char));
                 }
 
-                peRquestDetails[reqPosUsed]._headerProp=0;
-                peRquestDetails[reqPosUsed]._pvoid = nullptr;
+                peRquestDetails[peRequestIdx]._headerProp=0;
+                peRquestDetails[peRequestIdx]._pvoid = nullptr;
 			}
-            else if(peRquestDetails[reqPosUsed]._headerProp == 1){
-				if(!strcmp((const char*)syExMess[group].buffer1,"start")){
-					peRquestDetails[reqPosUsed].command = MIDICI_PE_COMMAND_START;
+            else if(peRquestDetails[peRequestIdx]._headerProp == 1){
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"start")){
+					peRquestDetails[peRequestIdx].command = MIDICI_PE_COMMAND_START;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"end")){
-					peRquestDetails[reqPosUsed].command = MIDICI_PE_COMMAND_END;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"end")){
+					peRquestDetails[peRequestIdx].command = MIDICI_PE_COMMAND_END;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"partial")){
-					peRquestDetails[reqPosUsed].command = MIDICI_PE_COMMAND_PARTIAL;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"partial")){
+					peRquestDetails[peRequestIdx].command = MIDICI_PE_COMMAND_PARTIAL;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"full")){
-					peRquestDetails[reqPosUsed].command = MIDICI_PE_COMMAND_FULL;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"full")){
+					peRquestDetails[peRequestIdx].command = MIDICI_PE_COMMAND_FULL;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"notify")){
-					peRquestDetails[reqPosUsed].command = MIDICI_PE_COMMAND_NOTIFY;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"notify")){
+					peRquestDetails[peRequestIdx].command = MIDICI_PE_COMMAND_NOTIFY;
 				};
-                peRquestDetails[reqPosUsed]._headerProp=0;
-                peRquestDetails[reqPosUsed]._pvoid = nullptr;
+                peRquestDetails[peRequestIdx]._headerProp=0;
+                peRquestDetails[peRequestIdx]._pvoid = nullptr;
 			}
-            else if(peRquestDetails[reqPosUsed]._headerProp == 2){
-				if(!strcmp((const char*)syExMess[group].buffer1,"copy")){
-					peRquestDetails[reqPosUsed].action = EXP_MIDICI_PE_ACTION_COPY;
+            else if(peRquestDetails[peRequestIdx]._headerProp == 2){
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"copy")){
+					peRquestDetails[peRequestIdx].action = EXP_MIDICI_PE_ACTION_COPY;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"move")){
-					peRquestDetails[reqPosUsed].action = EXP_MIDICI_PE_ACTION_MOVE;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"move")){
+					peRquestDetails[peRequestIdx].action = EXP_MIDICI_PE_ACTION_MOVE;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"delete")){
-					peRquestDetails[reqPosUsed].action = EXP_MIDICI_PE_ACTION_DELETE;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"delete")){
+					peRquestDetails[peRequestIdx].action = EXP_MIDICI_PE_ACTION_DELETE;
 				}
-				if(!strcmp((const char*)syExMess[group].buffer1,"createDirectory")){
-					peRquestDetails[reqPosUsed].action = EXP_MIDICI_PE_ACTION_CREATE_DIR;
+				if(!strcmp((const char*)syExMessInt[group].buffer1,"createDirectory")){
+					peRquestDetails[peRequestIdx].action = EXP_MIDICI_PE_ACTION_CREATE_DIR;
 				}
-                peRquestDetails[reqPosUsed]._headerProp=0;
-                peRquestDetails[reqPosUsed]._pvoid = nullptr;
+                peRquestDetails[peRequestIdx]._headerProp=0;
+                peRquestDetails[peRequestIdx]._pvoid = nullptr;
 			}
-            else if(peRquestDetails[reqPosUsed]._headerProp == 3){
-                if(!strcmp((const char*)syExMess[group].buffer1,"ASCII")){
-                    peRquestDetails[reqPosUsed].mutualEncoding = MIDICI_PE_ASCII;
+            else if(peRquestDetails[peRequestIdx]._headerProp == 3){
+                if(!strcmp((const char*)syExMessInt[group].buffer1,"ASCII")){
+                    peRquestDetails[peRequestIdx].mutualEncoding = MIDICI_PE_ASCII;
                 }
-                if(!strcmp((const char*)syExMess[group].buffer1,"Mcoded7")){
-                    peRquestDetails[reqPosUsed].mutualEncoding = MIDICI_PE_MCODED7;
+                if(!strcmp((const char*)syExMessInt[group].buffer1,"Mcoded7")){
+                    peRquestDetails[peRequestIdx].mutualEncoding = MIDICI_PE_MCODED7;
                 }
-                if(!strcmp((const char*)syExMess[group].buffer1,"zlib+Mcoded7")){
-                    peRquestDetails[reqPosUsed].mutualEncoding = MIDICI_PE_MCODED7ZLIB;
+                if(!strcmp((const char*)syExMessInt[group].buffer1,"zlib+Mcoded7")){
+                    peRquestDetails[peRequestIdx].mutualEncoding = MIDICI_PE_MCODED7ZLIB;
                 }
-                peRquestDetails[reqPosUsed]._headerProp=0;
-                peRquestDetails[reqPosUsed]._pvoid = nullptr;
+                peRquestDetails[peRequestIdx]._headerProp=0;
+                peRquestDetails[peRequestIdx]._pvoid = nullptr;
             }
 			clear=1;
         }
-        else if(peRquestDetails[reqPosUsed]._headerProp >= 1 && peRquestDetails[reqPosUsed]._pvoid != nullptr){
+        else if(peRquestDetails[peRequestIdx]._headerProp >= 1 && peRquestDetails[peRequestIdx]._pvoid != nullptr){
 
-            char *t = (char *)peRquestDetails[reqPosUsed]._pvoid;
-            t[peRquestDetails[reqPosUsed]._headerProp-1] = s7Byte;
-            t[peRquestDetails[reqPosUsed]._headerProp]='\0';
-            peRquestDetails[reqPosUsed]._headerProp++;
+            char *t = (char *)peRquestDetails[peRequestIdx]._pvoid;
+            t[peRquestDetails[peRequestIdx]._headerProp-1] = s7Byte;
+            t[peRquestDetails[peRequestIdx]._headerProp]='\0';
+            peRquestDetails[peRequestIdx]._headerProp++;
         }
-        else if(peRquestDetails[reqPosUsed]._headerPos +1 < PE_HEAD_BUFFERLEN){
-			syExMess[group].buffer1[peRquestDetails[reqPosUsed]._headerPos++] = s7Byte;
+        else if(peRquestDetails[peRequestIdx]._headerPos +1 < PE_HEAD_BUFFERLEN){
+			syExMessInt[group].buffer1[peRquestDetails[peRequestIdx]._headerPos++] = s7Byte;
         }
-	} else if((peRquestDetails[reqPosUsed]._headerState & 0xF) == PE_HEAD_STATE_IN_NUMBER) {;
+	} else if((peRquestDetails[peRequestIdx]._headerState & 0xF) == PE_HEAD_STATE_IN_NUMBER) {;
 		if ((s7Byte >= '0' && s7Byte <= '9') ) {
-			int *n = (int *)peRquestDetails[reqPosUsed]._pvoid;
+			int *n = (int *)peRquestDetails[peRequestIdx]._pvoid;
 			*n =  *n * 10 + (s7Byte - '0');
-		}else if(peRquestDetails[reqPosUsed]._pvoid != nullptr){
-            peRquestDetails[reqPosUsed]._pvoid = nullptr;
+		}else if(peRquestDetails[peRequestIdx]._pvoid != nullptr){
+            peRquestDetails[peRequestIdx]._pvoid = nullptr;
 			clear=1;
-			peRquestDetails[reqPosUsed]._headerState=PE_HEAD_KEY + (peRquestDetails[reqPosUsed]._headerState & 0xF);
+			peRquestDetails[peRequestIdx]._headerState=PE_HEAD_KEY + (peRquestDetails[peRequestIdx]._headerState & 0xF);
 		}
 	} else if (s7Byte == ':') {
-		peRquestDetails[reqPosUsed]._headerState=PE_HEAD_VALUE + (peRquestDetails[reqPosUsed]._headerState & 0xF);
+		peRquestDetails[peRequestIdx]._headerState=PE_HEAD_VALUE + (peRquestDetails[peRequestIdx]._headerState & 0xF);
 	}else if (s7Byte == ',') {
-		peRquestDetails[reqPosUsed]._headerState = PE_HEAD_KEY + (peRquestDetails[reqPosUsed]._headerState & 0xF);
+		peRquestDetails[peRequestIdx]._headerState = PE_HEAD_KEY + (peRquestDetails[peRequestIdx]._headerState & 0xF);
 	}else if ((s7Byte >= '0' && s7Byte <= '9') ) {
-		int *n = (int *)peRquestDetails[reqPosUsed]._pvoid;
+		int *n = (int *)peRquestDetails[peRequestIdx]._pvoid;
 		*n =  s7Byte - '0';
-		peRquestDetails[reqPosUsed]._headerState = (peRquestDetails[reqPosUsed]._headerState & 0xF0) + PE_HEAD_STATE_IN_NUMBER;
+		peRquestDetails[peRequestIdx]._headerState = (peRquestDetails[peRequestIdx]._headerState & 0xF0) + PE_HEAD_STATE_IN_NUMBER;
 	}else if (s7Byte == 't' || s7Byte == 'f') {
-        bool *b = (bool *)peRquestDetails[reqPosUsed]._pvoid;
+        bool *b = (bool *)peRquestDetails[peRequestIdx]._pvoid;
         *b = s7Byte == 't';
-        peRquestDetails[reqPosUsed]._headerState = (peRquestDetails[reqPosUsed]._headerState & 0xF0) + PE_HEAD_STATE_IN_BOOL;
+        peRquestDetails[peRequestIdx]._headerState = (peRquestDetails[peRequestIdx]._headerState & 0xF0) + PE_HEAD_STATE_IN_BOOL;
     }else if (s7Byte == '"') {
-		peRquestDetails[reqPosUsed]._headerState = (peRquestDetails[reqPosUsed]._headerState & 0xF0) + PE_HEAD_STATE_IN_STRING;
+		peRquestDetails[peRequestIdx]._headerState = (peRquestDetails[peRequestIdx]._headerState & 0xF0) + PE_HEAD_STATE_IN_STRING;
 	}
 	
 	if(clear){
-		memset(syExMess[group].buffer1, 0, PE_HEAD_BUFFERLEN);
-		peRquestDetails[reqPosUsed]._headerPos=0;
-		peRquestDetails[reqPosUsed]._headerState = (peRquestDetails[reqPosUsed]._headerState & 0xF0) + PE_HEAD_STATE_IN_OBJECT;
+		memset(syExMessInt[group].buffer1, 0, PE_HEAD_BUFFERLEN);
+		peRquestDetails[peRequestIdx]._headerPos=0;
+		peRquestDetails[peRequestIdx]._headerState = (peRquestDetails[peRequestIdx]._headerState & 0xF0) + PE_HEAD_STATE_IN_OBJECT;
 	}
 	
 }
 
-void midi2Processor::sendPECapabilityRequest(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion){
+void midi2Processor::sendPECapabilityRequest(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t numSimulRequests){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[14];
-	addCIHeader(MIDICI_PE_CAPABILITY,sysex,ciVersion);
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
-	sysex[13] = numRequests;
+    MIDICI midici;
+    midici.ciType = MIDICI_PE_CAPABILITY;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
+    createCIHeader(sysex, midici);
+	sysex[13] = numSimulRequests;
 	sendOutSysex(group,sysex,14,0);
 }
 
-void midi2Processor::sendPEGet(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, uint16_t headerLen, uint8_t* header){
+void midi2Processor::sendPECapabilityReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t numSimulRequests){
+    if(sendOutSysex == nullptr) return;
+    uint8_t sysex[14];
+    MIDICI midici;
+    midici.ciType = MIDICI_PE_CAPABILITYREPLY;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
+    createCIHeader(sysex, midici);
+    sysex[13] = numSimulRequests;
+    sendOutSysex(group,sysex,14,0);
+}
+
+void midi2Processor::sendPEGet(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-	addCIHeader(MIDICI_PE_GET,sysex,ciVersion);
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
+    MIDICI midici;
+    midici.ciType = MIDICI_PE_GET;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
+    createCIHeader(sysex, midici);
 	sendOutSysex(group,sysex,13,1);
 	
 	sysex[0] = requestId;
@@ -322,11 +318,14 @@ void midi2Processor::sendPEGet(uint8_t group, uint32_t remoteMuid, uint8_t ciVer
     sendOutSysex(group,sysex,6,3);
 }
 
-void midi2Processor::sendPESet(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
+void midi2Processor::sendPESet(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
     if(sendOutSysex == nullptr) return;
     uint8_t sysex[13];
-    addCIHeader(MIDICI_PE_SET,sysex,ciVersion);
-    setBytesFromNumbers(sysex, remoteMuid, 9, 4);
+    MIDICI midici;
+    midici.ciType = MIDICI_PE_SET;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
+    createCIHeader(sysex, midici);
     sendOutSysex(group,sysex,13,1);
 
     sysex[0] = requestId;
@@ -342,11 +341,14 @@ void midi2Processor::sendPESet(uint8_t group, uint32_t remoteMuid, uint8_t ciVer
     sendOutSysex(group,body,bodyLength,3);
 }
 
-void midi2Processor::sendPEGetReply(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
+void midi2Processor::sendPEGetReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-	addCIHeader(MIDICI_PE_GETREPLY,sysex,ciVersion);
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
+    MIDICI midici;
+    midici.ciType = MIDICI_PE_GETREPLY;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
+    createCIHeader(sysex, midici);
 	sendOutSysex(group,sysex,13,1);
 	
 	sysex[0] = requestId;
@@ -362,11 +364,13 @@ void midi2Processor::sendPEGetReply(uint8_t group, uint32_t remoteMuid, uint8_t 
 	sendOutSysex(group,body,bodyLength,3);
 }
 
-void midi2Processor::sendPEGetReplyStreamStart(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength){
+void midi2Processor::sendPEGetReplyStreamStart(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-	addCIHeader(MIDICI_PE_GETREPLY,sysex,ciVersion);
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
+    MIDICI midici;
+    midici.ciType = MIDICI_PE_GETREPLY;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
 	sendOutSysex(group,sysex,13,1);
 	
 	sysex[0] = requestId;
@@ -384,11 +388,14 @@ void midi2Processor::sendPEGetReplyStreamContinue(uint8_t group, uint16_t partia
 	sendOutSysex(group,part,partialLength, last?3:2);
 }
 
-void midi2Processor::sendPESub(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
+void midi2Processor::sendPESub(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
     if(sendOutSysex == nullptr) return;
     uint8_t sysex[13];
-    addCIHeader(MIDICI_PE_SUB,sysex,ciVersion);
-    setBytesFromNumbers(sysex, remoteMuid, 9, 4);
+    MIDICI midici;
+    midici.ciType = MIDICI_PE_SUB;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
+    createCIHeader(sysex, midici);
     sendOutSysex(group,sysex,13,1);
 
     sysex[0] = requestId;
@@ -404,11 +411,14 @@ void midi2Processor::sendPESub(uint8_t group, uint32_t remoteMuid, uint8_t ciVer
     sendOutSysex(group,body,bodyLength,3);
 }
 
-void midi2Processor::sendPESubReply(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, uint16_t headerLen, uint8_t* header){
+void midi2Processor::sendPESubReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-	addCIHeader(MIDICI_PE_SUBREPLY,sysex,ciVersion);
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
+    MIDICI midici;
+    midici.ciType = MIDICI_PE_SUBREPLY;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
+    createCIHeader(sysex, midici);
 	sendOutSysex(group,sysex,13,1);
 	
 	sysex[0] = requestId;
@@ -422,11 +432,14 @@ void midi2Processor::sendPESubReply(uint8_t group, uint32_t remoteMuid, uint8_t 
     sendOutSysex(group,sysex,6,3);
 }
 
-void midi2Processor::sendPESetReply(uint8_t group, uint32_t remoteMuid, uint8_t ciVersion, uint8_t requestId, uint16_t headerLen, uint8_t* header){
+void midi2Processor::sendPESetReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-	addCIHeader(MIDICI_PE_SETREPLY,sysex,ciVersion);
-	setBytesFromNumbers(sysex, remoteMuid, 9, 4);
+    MIDICI midici;
+    midici.ciType = MIDICI_PE_SETREPLY;
+    midici.localMUID = srcMUID;
+    midici.remoteMUID = destMuid;
+    createCIHeader(sysex, midici);
 	sendOutSysex(group,sysex,13,1);
 	
 	sysex[0] = requestId;
@@ -441,9 +454,36 @@ void midi2Processor::sendPESetReply(uint8_t group, uint32_t remoteMuid, uint8_t 
 }
 
 
-void midi2Processor::cleanupRequestId(uint8_t requestId){
+uint8_t midi2Processor::getPERequestId(uint8_t group, uint32_t muid, uint8_t requestId){
+    uint8_t peRequestIdx = 255;
+
+    for(uint8_t i =0;i<numRequests;i++) {
+        if (
+                peRquestDetails[i].requestId == requestId
+                && peRquestDetails[i].muid == muid
+                && peRquestDetails[i].group == group
+                ) {
+            return i;
+        }
+    }
+    for(uint8_t i =0;i<numRequests;i++){
+        if(peRquestDetails[i].requestId == 255){
+            peRquestDetails[i].requestId = requestId;
+            peRquestDetails[i].muid = muid;
+            peRquestDetails[i].group = group;
+            return i;
+        }
+    }
+    return peRequestIdx;
+}
+
+void midi2Processor::cleanupRequestId(uint8_t group, uint32_t muid, uint8_t requestId){
 	for(uint8_t i =0;i<numRequests;i++){
-		if(peRquestDetails[i].requestId == requestId){
+		if(
+                peRquestDetails[i].requestId == requestId
+                && peRquestDetails[i].muid == muid
+                && peRquestDetails[i].group == group
+                ){
             cleanupRequest(i);
 			return;
 		}
@@ -453,6 +493,7 @@ void midi2Processor::cleanupRequestId(uint8_t requestId){
 void midi2Processor::cleanupRequest(uint8_t reqpos){
     peRquestDetails[reqpos].requestId = 255;
     peRquestDetails[reqpos].group = 255;
+    peRquestDetails[reqpos].muid = M2_CI_BROADCAST;
     memset(peRquestDetails[reqpos].resource,0,PE_HEAD_BUFFERLEN);
     memset(peRquestDetails[reqpos].resId,0,PE_HEAD_BUFFERLEN);
     memset(peRquestDetails[reqpos].subscribeId,0,PE_HEAD_BUFFERLEN);

@@ -132,17 +132,20 @@ struct UMP128{
 	uint32_t UMP[4];
 };
 
-struct umpSysex7{
-    //bool _state = false;
-    uint16_t _pos = 0;
+struct MIDICI{
+    uint8_t deviceId = MIDI_PORT;
+    uint8_t ciType = 255;
+    uint8_t ciVer = 1;
+    uint32_t remoteMUID = M2_CI_BROADCAST;
+    uint32_t localMUID = 0;
+
+};
+
+struct umpSysex7Internal {
     uint8_t realtime = 0;
     uint8_t universalId = 0;
-    uint8_t deviceId = 255;
-    uint8_t ciType = 255;
-    uint8_t ciVer = 255;
-    uint32_t remoteMUID = 0;
-    uint32_t destMuid = 0;
-    uint8_t reqPosUsed = 255;
+    uint8_t peRequestIdx = 255;
+    uint16_t pos = 0;
     uint8_t buffer1[PE_HEAD_BUFFERLEN];
     /* in Discovery this is [sysexID1,sysexID2,sysexID3,famId1,famid2,modelId1,modelId2,ver1,ver2,ver3,ver4]
      * in Profiles this is [pf1, pf1, pf3, pf4, pf5]
@@ -151,7 +154,7 @@ struct umpSysex7{
     uint16_t intbuffer1[2];
     /* in Discovery this is [ciSupport, maxSysex]
      * in Profile Inquiry Reply, this is [Enabled Profiles Length, Disabled Profile Length]
-     * in PE this is [headerlength, Body Length]
+     * in PE this is [header length, Body Length]
      */
 };
 
@@ -160,6 +163,7 @@ struct umpSysex7{
 struct peHeader {
     uint8_t requestId = 255;
     uint8_t group = 255;
+    uint32_t muid = 0;
     char resource[PE_HEAD_BUFFERLEN]="";
     uint8_t command=0;
     uint8_t action=0;
