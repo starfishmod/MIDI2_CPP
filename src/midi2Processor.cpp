@@ -68,15 +68,15 @@ midi2Processor::~midi2Processor() {
 	
 }
 
-void midi2Processor::createCIHeader(uint8_t* sysexHeader, MIDICI midici){
+void midi2Processor::createCIHeader(uint8_t* sysexHeader, MIDICI midiCiHeader){
 
 	sysexHeader[0]=S7UNIVERSAL_NRT;
-	sysexHeader[1]=midici.deviceId;//MIDI_PORT;
+	sysexHeader[1]=midiCiHeader.deviceId;//MIDI_PORT;
 	sysexHeader[2]=S7MIDICI;
-	sysexHeader[3]=midici.ciType;
-	sysexHeader[4]=midici.ciVer;
-	setBytesFromNumbers(sysexHeader, midici.localMUID, 5, 4);
-	setBytesFromNumbers(sysexHeader, midici.remoteMUID, 9, 4);
+	sysexHeader[3]=midiCiHeader.ciType;
+	sysexHeader[4]=midiCiHeader.ciVer;
+	setBytesFromNumbers(sysexHeader, midiCiHeader.localMUID, 5, 4);
+	setBytesFromNumbers(sysexHeader, midiCiHeader.remoteMUID, 9, 4);
 }
 
 void midi2Processor::endSysex7(uint8_t group){
@@ -596,10 +596,10 @@ void midi2Processor::sendDiscoveryRequest(uint8_t group, uint32_t srcMUID,
 	if(sendOutSysex == nullptr) return;
 	
 	uint8_t sysex[13];
-    MIDICI midici;
-    midici.ciType = MIDICI_DISCOVERY;
-    midici.localMUID = srcMUID;
-    createCIHeader(sysex, midici);
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_DISCOVERY;
+    midiCiHeader.localMUID = srcMUID;
+    createCIHeader(sysex, midiCiHeader);
 	sendOutSysex(group,sysex,13,1);
 	sendOutSysex(group,sysexId,3,2);
 	sendOutSysex(group,famId,2,2);
@@ -620,11 +620,11 @@ void midi2Processor::sendDiscoveryReply(uint8_t group,  uint32_t srcMUID, uint32
     if(sendOutSysex == nullptr) return;
 
     uint8_t sysex[13];
-    MIDICI midici;
-    midici.ciType = MIDICI_DISCOVERYREPLY;
-    midici.localMUID = srcMUID;
-    midici.remoteMUID = destMuid;
-    createCIHeader(sysex, midici);
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_DISCOVERYREPLY;
+    midiCiHeader.localMUID = srcMUID;
+    midiCiHeader.remoteMUID = destMuid;
+    createCIHeader(sysex, midiCiHeader);
 
     sendOutSysex(group,sysex,13,1);
     sendOutSysex(group,sysexId,3,2);
@@ -641,21 +641,21 @@ void midi2Processor::sendDiscoveryReply(uint8_t group,  uint32_t srcMUID, uint32
 void midi2Processor::sendNAK(uint8_t group, uint32_t srcMUID, uint32_t destMuid){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-    MIDICI midici;
-    midici.ciType = MIDICI_NAK;
-    midici.localMUID = srcMUID;
-    midici.remoteMUID = destMuid;
-    createCIHeader(sysex, midici);
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_NAK;
+    midiCiHeader.localMUID = srcMUID;
+    midiCiHeader.remoteMUID = destMuid;
+    createCIHeader(sysex, midiCiHeader);
 	sendOutSysex(group,sysex,13,0);
 }
 
 void midi2Processor::sendInvalidateMUID(uint8_t group, uint32_t srcMUID, uint32_t terminateMuid){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-    MIDICI midici;
-    midici.ciType = MIDICI_INVALIDATEMUID;
-    midici.localMUID = srcMUID;
-    createCIHeader(sysex, midici);
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_INVALIDATEMUID;
+    midiCiHeader.localMUID = srcMUID;
+    createCIHeader(sysex, midiCiHeader);
 	sendOutSysex(group,sysex,13,1);
 	setBytesFromNumbers(sysex, terminateMuid, 0, 4);
 	sendOutSysex(group,sysex,4,3);

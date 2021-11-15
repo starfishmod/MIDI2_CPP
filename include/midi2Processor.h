@@ -103,7 +103,7 @@ class midi2Processor{
                               uint8_t ciSupport, uint16_t sysExMax);
 	void sendNAK(uint8_t group, uint32_t srcMUID, uint32_t destMuid);
 	void sendInvalidateMUID(uint8_t group, uint32_t srcMUID, uint32_t terminateMuid);
-    void createCIHeader(uint8_t* sysexHeader, MIDICI midici);
+    void createCIHeader(uint8_t* sysexHeader, MIDICI midiCiHeader);
 
 	inline void setDebug(void (*fptr)(char *message)){ sendOutDebug = fptr; }
 	

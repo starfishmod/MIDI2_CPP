@@ -94,12 +94,12 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 void midi2Processor::sendProfileListRequest(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-    MIDICI midici;
-    midici.ciType = MIDICI_PROFILE_INQUIRY;
-    midici.localMUID = srcMUID;
-    midici.remoteMUID = destMuid;
-    midici.deviceId = destination;
-    createCIHeader(sysex, midici);
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_PROFILE_INQUIRY;
+    midiCiHeader.localMUID = srcMUID;
+    midiCiHeader.remoteMUID = destMuid;
+    midiCiHeader.deviceId = destination;
+    createCIHeader(sysex, midiCiHeader);
 	sendOutSysex(group,sysex,13,0);
 }
 
@@ -107,12 +107,12 @@ void midi2Processor::sendProfileListRequest(uint8_t group, uint32_t srcMUID, uin
 void midi2Processor::sendProfileListResponse(uint8_t group, uint32_t srcMUID, uint32_t destMuid,  uint8_t destination, uint8_t profilesEnabledLen, uint8_t* profilesEnabled, uint8_t profilesDisabledLen , uint8_t* profilesDisabled ){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-    MIDICI midici;
-    midici.ciType = MIDICI_PROFILE_INQUIRYREPLY;
-    midici.localMUID = srcMUID;
-    midici.remoteMUID = destMuid;
-    midici.deviceId = destination;
-    createCIHeader(sysex, midici);
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_PROFILE_INQUIRYREPLY;
+    midiCiHeader.localMUID = srcMUID;
+    midiCiHeader.remoteMUID = destMuid;
+    midiCiHeader.deviceId = destination;
+    createCIHeader(sysex, midiCiHeader);
 	sendOutSysex(group,sysex,13,1);
 	
 	setBytesFromNumbers(sysex, profilesEnabledLen, 0, 2);
@@ -127,12 +127,12 @@ void midi2Processor::sendProfileListResponse(uint8_t group, uint32_t srcMUID, ui
 void midi2Processor::sendProfileOn(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination, uint8_t* profile){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-    MIDICI midici;
-    midici.ciType = MIDICI_PROFILE_SETON;
-    midici.localMUID = srcMUID;
-    midici.remoteMUID = destMuid;
-    midici.deviceId = destination;
-    createCIHeader(sysex, midici);
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_PROFILE_SETON;
+    midiCiHeader.localMUID = srcMUID;
+    midiCiHeader.remoteMUID = destMuid;
+    midiCiHeader.deviceId = destination;
+    createCIHeader(sysex, midiCiHeader);
 	sendOutSysex(group,sysex,13,1);
 	sendOutSysex(group,profile,5,3);
 }
@@ -140,12 +140,12 @@ void midi2Processor::sendProfileOn(uint8_t group, uint32_t srcMUID, uint32_t des
 void midi2Processor::sendProfileOff(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination, uint8_t* profile){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-    MIDICI midici;
-    midici.ciType = MIDICI_PROFILE_SETOFF;
-    midici.localMUID = srcMUID;
-    midici.remoteMUID = destMuid;
-    midici.deviceId = destination;
-    createCIHeader(sysex, midici);
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_PROFILE_SETOFF;
+    midiCiHeader.localMUID = srcMUID;
+    midiCiHeader.remoteMUID = destMuid;
+    midiCiHeader.deviceId = destination;
+    createCIHeader(sysex, midiCiHeader);
 	sendOutSysex(group,sysex,13,1);
 	sendOutSysex(group,profile,5,3);
 }
@@ -153,12 +153,12 @@ void midi2Processor::sendProfileOff(uint8_t group, uint32_t srcMUID, uint32_t de
 void midi2Processor::sendProfileEnabled(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination, uint8_t* profile){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-    MIDICI midici;
-    midici.ciType = MIDICI_PROFILE_ENABLED;
-    midici.localMUID = srcMUID;
-    midici.remoteMUID = destMuid;
-    midici.deviceId = destination;
-    createCIHeader(sysex, midici);
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_PROFILE_ENABLED;
+    midiCiHeader.localMUID = srcMUID;
+    midiCiHeader.remoteMUID = destMuid;
+    midiCiHeader.deviceId = destination;
+    createCIHeader(sysex, midiCiHeader);
 	sendOutSysex(group,sysex,13,1);
 	sendOutSysex(group,profile,5,3);
 }
@@ -166,12 +166,12 @@ void midi2Processor::sendProfileEnabled(uint8_t group, uint32_t srcMUID, uint32_
 void midi2Processor::sendProfileDisabled(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination, uint8_t* profile){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[13];
-    MIDICI midici;
-    midici.ciType = MIDICI_PROFILE_DISABLED;
-    midici.localMUID = srcMUID;
-    midici.remoteMUID = destMuid;
-    midici.deviceId = destination;
-    createCIHeader(sysex, midici);
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_PROFILE_DISABLED;
+    midiCiHeader.localMUID = srcMUID;
+    midiCiHeader.remoteMUID = destMuid;
+    midiCiHeader.deviceId = destination;
+    createCIHeader(sysex, midiCiHeader);
 	sendOutSysex(group,sysex,13,1);
 	sendOutSysex(group,profile,5,3);
 }
