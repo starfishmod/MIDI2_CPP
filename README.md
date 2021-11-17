@@ -41,9 +41,7 @@ Can be found on the [WIKI](https://github.com/starfishmod/MIDI2_CPP/wiki)
 
 ### TODO
 * Protocol Negotiation
-* PE Get Reply handling
-* PE Set Methods
-* PE Handling of Mcoded7
+* PE Handling of Mcoded7 (80%)
 * Profile Specific Data Message
 * Handling of Per Note Controllers
 * Universal SysEx handling (Other than Device ID and MIDI-CI)
@@ -137,6 +135,11 @@ UMP Streams accepts a series of 32 bit values. UMP messages that have 64bit will
 
 #include "midi2.h"
 midi2Processor MIDI2 (0,2); 
+uint32_t m2procMUID;
+uint8_t sysexId[3] = {0x00 , 0x02, 0x22};
+uint8_t famId[2] = {0x7F, 0x00};
+uint8_t modelId[2] = {0x7F, 0x00};
+uint8_t ver[4];
 
 void rawSysex(uint8_t group, uint8_t *sysex ,int length, uint8_t state){
   //Generated SysEX Message from MIDI-CI or other Messages are sent to this function.
@@ -153,45 +156,29 @@ void rawSysex(uint8_t group, uint8_t *sysex ,int length, uint8_t state){
   if (state == 0 || state==3) Serial.write((char)SYSEX_STOP);
 }
 
-void discovery(uint8_t group, uint32_t remoteMuid, uint8_t ciVer, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, int maxSysex){
+bool checkMUID(uint8_t group, uint32_t muid){
+	return (m2procMUID==muid);  
 }
 
-void nak(uint8_t group, uint32_t remoteMuid){
+void recvDiscovery(uint8_t group, struct MIDICI ciDetails, uint8_t* remotemanuId, uint8_t* remotefamId, uint8_t* remotemodelId, uint8_t *remoteverId, uint8_t remoteciSupport, uint16_t remotemaxSysex){
+	Serial.print("->Discovery: remoteMuid ");Serial.println(ciDetails.remoteMUID);
+	MIDI2.sendDiscoveryReply(group, m2procMUID, ciDetails.remoteMUID, sysexId, famId, modelId, ver, 0b11100, 512);
 }
 
-void invalidMUID(uint8_t group, uint32_t remoteMuid, uint32_t terminateMuid){
-  MIDI2.m2procMUID = random(0xFFFFEFF);
-  MIDI2.sendDiscoveryRequest(0,1);
-}
 
-void profileInquiry(uint8_t group, uint32_t remoteMUID, uint8_t destination){  
-  uint8_t profileNone[0] = {};
-  
-  //return a Profile on Channel 1
-  if(destination == 0 || destination == 0x7F){
-    uint8_t profileDrawBar[5] = {0x7E, 0x40, 0x01, 0x01};
-    MIDI2.sendProfileListResponse(group, remoteMUID, 1, 0, 1, profileDrawBar, 0, profileNone);
-  }
 
-  if(destination == 0x7F){
-    MIDI2.sendProfileListResponse(group, remoteMUID, 1, 0x7F, 0, profileNone, 0, profileNone);
-  }
-}
 
 void setup()
 {
   randomSeed(analogRead(8));
   Serial.begin(31250);
-  MIDI2.m2procMUID = random(0xFFFFEFF);
-  MIDI2.ciSupport=0b100;
+  m2procMUID = random(0xFFFFEFF);
   
-  MIDI2.setRecvDiscovery(discovery);
-  MIDI2.setRecvNAK(nak);
-  MIDI2.setRecvInvalidateMUID(invalidMUID);
-
-  MIDI2.setRecvProfileInquiry(profileInquiry);
+  MIDI2.setRawSysEx(rawSysex);
+  MIDI2.setRecvDiscovery(recvDiscovery);
+  MIDI2.setCheckMUID(checkMUID);
   
-  MIDI2.sendDiscoveryRequest(0,1);
+  MIDI2.sendDiscoveryRequest(0,1, sysexId, famId, modelId, ver,12, 512);
 }
 
 void loop()
