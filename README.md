@@ -2,21 +2,23 @@
 A MIDI 2.0 Library for Embedded/Arduino Devices
 
 ## IMPORTANT! Please read first
-THIS LIBRARY IS CURRENTLY UNDER DEVELOPMENT - Code here today, is likely gone tomorrow!
+I hope that this library is useful to everyone making MIDI 2.0 Devices.
+If you do use this library please let me know! I am keen to see all the MIDI 2.0 Projects. This code is also available for DIY and commercial use (MIT Licence)
 
-I AM NOT A PROFESIONAL C++ DEVELOPER. If you see code here that :
+THIS LIBRARY IS CURRENTLY UNDER DEVELOPMENT - 
+The code is still being adjusted as it is being prototyped and changes do occur, however the WIKI attempts to reflect the latest code.
+
+If you see code here that :
 * could be styled/structured better
 * could be written better
 * could use less resources
 * has memory leaks, bugs, 
 * is fundamentally flawed
-* has spelling mistakes and gramtical errors
+* has spelling mistakes and grammatical errors
 
-Then please submit PR's and/or issues - but PR's preferred. 
+then please submit PR's and/or issues - but PR's preferred. 
 
-Given this - please use this library at your own risk! I hope that this library is useful to everyone making MIDI 2.0 Devices.
-
-If you do use this library please let me know! I am keen to see all the MIDI 2.0 Projects. This code is also available for DIY and commercial use (MIT Licence)
+Please note that use of this library is at your own risk!
 
 ## What does this do?
 Please read the MIDI 2.0 specification on https://midi.org/specifications to understand the following.
@@ -40,13 +42,12 @@ This means the overheads for a simple MIDI 2.0 device is down to a compiled size
 Can be found on the [WIKI](https://github.com/starfishmod/MIDI2_CPP/wiki)
 
 ### TODO
-* Protocol Negotiation
 * PE Handling of Mcoded7 (80%)
-* Profile Specific Data Message
+* SysEx8 and Mixed Data Set
 * Handling of Per Note Controllers
 * Universal SysEx handling (Other than Device ID and MIDI-CI)
 
-### Example Convert MIDI 1.0 Byte stream to UMP
+### Example: Translate MIDI 1.0 Byte stream to UMP
 
 Here is a quick Arduino example
 
@@ -86,7 +87,7 @@ void loop()
 }
 ```
 
-### Example Process UMP Streams
+### Example: Process UMP Streams
 UMP Streams accepts a series of 32 bit values. UMP messages that have 64bit will provide 2 UMP words.
 
 ```C++
@@ -128,9 +129,8 @@ void loop()
 
 ```
 
-### Example Process MIDI-CI Messages
-UMP Streams accepts a series of 32 bit values. UMP messages that have 64bit will provide 2 UMP words.
-
+### Example: Process MIDI-CI Messages
+MIDI-CI requires a lot of SysEx messages. This library abstracts the complexity of building and parsing most MIDI-CI Messages.
 ```C++
 
 #include "midi2.h"

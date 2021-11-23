@@ -42,6 +42,7 @@ void midi2Processor::processPESysex(uint8_t group, uint8_t s7Byte){
                     midici[group].ciType == MIDICI_PE_GET
                     || midici[group].ciType == MIDICI_PE_SETREPLY
                     || midici[group].ciType == MIDICI_PE_SUBREPLY
+                    || midici[group].ciType == MIDICI_PE_NOTIFY
                     )
             ){
                 if(midici[group].ciType == MIDICI_PE_GET && recvPEGetInquiry != nullptr){
@@ -52,6 +53,9 @@ void midi2Processor::processPESysex(uint8_t group, uint8_t s7Byte){
                 }
                 if(midici[group].ciType == MIDICI_PE_SUBREPLY && recvPESubReply != nullptr){
                     recvPESubReply(group, midici[group], peRquestDetails[peRequestIdx]);
+                }
+                if(midici[group].ciType == MIDICI_PE_NOTIFY && recvPENotify != nullptr){
+                    recvPENotify(group, midici[group], peRquestDetails[peRequestIdx]);
                 }
                 cleanupRequestId(group, midici[group].remoteMUID, peRquestDetails[peRequestIdx].requestId);
             }else if(syExMessInt[group].pos == 15 + headerLength){
@@ -424,6 +428,27 @@ void midi2Processor::sendPESubReply(uint8_t group, uint32_t srcMUID, uint32_t de
 	sysex[0] = requestId;
 	setBytesFromNumbers(sysex, headerLen, 1, 2);
 	sendOutSysex(group,sysex,3,2);
+    sendOutSysex(group, header,headerLen,2);
+
+    setBytesFromNumbers(sysex, 1, 0, 2);
+    setBytesFromNumbers(sysex, 1, 2, 2);
+    setBytesFromNumbers(sysex, 0, 4, 2);
+    sendOutSysex(group,sysex,6,3);
+}
+
+void midi2Processor::sendPENotify(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header){
+    if(sendOutSysex == nullptr) return;
+    uint8_t sysex[13];
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_PE_NOTIFY;
+    midiCiHeader.localMUID = srcMUID;
+    midiCiHeader.remoteMUID = destMuid;
+    createCIHeader(sysex, midiCiHeader);
+    sendOutSysex(group,sysex,13,1);
+
+    sysex[0] = requestId;
+    setBytesFromNumbers(sysex, headerLen, 1, 2);
+    sendOutSysex(group,sysex,3,2);
     sendOutSysex(group, header,headerLen,2);
 
     setBytesFromNumbers(sysex, 1, 0, 2);

@@ -31,7 +31,7 @@ class midi2Processor{
     
   private:
   
-	uint32_t umpMess[4];
+	uint32_t umpMess[4]{};
 	uint8_t messPos=0;
 
     MIDICI midici[UMPGROUPS];
@@ -68,6 +68,7 @@ class midi2Processor{
     void (*recvNAK)(uint8_t group, MIDICI ciDetails) = nullptr;
     void (*recvInvalidateMUID)(uint8_t group, MIDICI ciDetails, uint32_t terminateMuid) = nullptr;
     void (*recvUnknownMIDICI)(uint8_t group, umpSysex7Internal * syExMess, MIDICI ciDetails, uint8_t s7Byte) = nullptr;
+    void (*recvUnknownSysEx)(uint8_t group, umpSysex7Internal * syExMess, uint8_t s7Byte) = nullptr;
 
 
     void endSysex7(uint8_t group);
@@ -103,7 +104,7 @@ class midi2Processor{
                               uint8_t ciSupport, uint16_t sysExMax);
 	void sendNAK(uint8_t group, uint32_t srcMUID, uint32_t destMuid);
 	void sendInvalidateMUID(uint8_t group, uint32_t srcMUID, uint32_t terminateMuid);
-    void createCIHeader(uint8_t* sysexHeader, MIDICI midiCiHeader);
+    static void createCIHeader(uint8_t* sysexHeader, MIDICI midiCiHeader);
 
 	inline void setDebug(void (*fptr)(char *message)){ sendOutDebug = fptr; }
 	
@@ -140,6 +141,7 @@ class midi2Processor{
 	inline void setRecvNAK(void (*fptr)(uint8_t group, MIDICI ciDetails)){ recvNAK = fptr;}
 	inline void setRecvInvalidateMUID(void (*fptr)(uint8_t group, MIDICI ciDetails, uint32_t terminateMuid)){ recvInvalidateMUID = fptr;}
 	inline void setRecvUnknownMIDICI(void (*fptr)(uint8_t group, umpSysex7Internal * syExMess, MIDICI ciDetails, uint8_t s7Byte)){ recvUnknownMIDICI = fptr;}
+	inline void setRecvUnknownSysEx(void (*fptr)(uint8_t group, umpSysex7Internal * syExMess, uint8_t s7Byte)){ recvUnknownSysEx = fptr;}
 
 	
 #ifndef M2_DISABLE_IDREQ
@@ -164,7 +166,32 @@ class midi2Processor{
 	inline void setJRTimeStamp(void (*fptr)(uint8_t group,uint16_t timestamp)){ recvJRTimeStamp = fptr;}
 #endif
 
+#ifndef M2_DISABLE_PROTOCOL
+  private:
+    void processProtocolSysex(uint8_t group, uint8_t s7Byte);
+    void (*recvProtocolAvailable)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel, uint8_t* protocol) = nullptr;
+    void (*recvSetProtocol)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel, uint8_t* protocol) = nullptr;
+    void (*recvSetProtocolConfirm)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel) = nullptr;
+    void (*recvProtocolTest)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel, bool testDataAccurate) = nullptr;
+  public:
+    void sendProtocolNegotiation(uint8_t group, uint32_t srcMUID, uint32_t destMuid,
+                                 uint8_t authorityLevel, uint8_t numProtocols, uint8_t* protocols);
+    void sendProtocolNegotiationReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid,
+                                      uint8_t authorityLevel, uint8_t numProtocols, uint8_t* protocols);
+    void sendSetProtocol(uint8_t group, uint32_t srcMUID, uint32_t destMuid,
+                     uint8_t authorityLevel, uint8_t* protocol);
+    void sendProtocolTest(uint8_t group, uint32_t srcMUID, uint32_t destMuid,
+                         uint8_t authorityLevel);
+    void sendProtocolTestResponder(uint8_t group, uint32_t srcMUID, uint32_t destMuid,
+                         uint8_t authorityLevel);
 
+
+    inline void setRecvProtocolAvailable(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel, uint8_t* protocol)){ recvProtocolAvailable = fptr;}
+    inline void setRecvSetProtocol(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel, uint8_t* protocol)){ recvSetProtocol = fptr;}
+    inline void setRecvSetProtocolConfirm(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel)){ recvSetProtocolConfirm = fptr;}
+    inline void setRecvSetProtocolTest(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel, bool testDataAccurate)){ recvProtocolTest = fptr;}
+
+#endif
 
 #ifndef M2_DISABLE_PROFILE
   private:
@@ -173,6 +200,7 @@ class midi2Processor{
     void (*recvSetProfileDisabled)(uint8_t group, MIDICI ciDetails, uint8_t* profile) = nullptr;
     void (*recvSetProfileOn)(uint8_t group, MIDICI ciDetails, uint8_t* profile) = nullptr;
     void (*recvSetProfileOff)(uint8_t group, MIDICI ciDetails, uint8_t* profile) = nullptr;
+    void (*recvProfileDetails)(uint8_t group, MIDICI ciDetails, uint8_t* profile, uint16_t datalen, uint8_t*  data, uint16_t part, bool lastByteOfSet) = nullptr;
     void processProfileSysex(uint8_t group, uint8_t s7Byte);
   public:
 	inline void setRecvProfileInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails)){ recvProfileInquiry = fptr;}
@@ -180,8 +208,8 @@ class midi2Processor{
 	inline void setRecvProfileDisabled(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){ recvSetProfileDisabled = fptr;}
 	inline void setRecvProfileOn(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){ recvSetProfileOn = fptr;}
 	inline void setRecvProfileOff(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){ recvSetProfileOff = fptr;}
-	//TODO Profile Specific Data Message
-	
+	inline void setRecvProfileDetails(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile, uint16_t datalen, uint8_t*  data, uint16_t part, bool lastByteOfSet)){ recvProfileDetails = fptr;}
+
 	void sendProfileListRequest(uint8_t group, uint32_t srcMUID, uint32_t destMuid,  uint8_t destination);
 	void sendProfileListResponse(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination,
 	        uint8_t profilesEnabledLen, uint8_t* profilesEnabled, uint8_t profilesDisabledLen , 
@@ -194,6 +222,9 @@ class midi2Processor{
 	        uint8_t* profile);
 	void sendProfileDisabled(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination,
 	        uint8_t* profile);
+
+    void sendProfileSpecificData(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination,
+                             uint8_t* profile, uint16_t datalen, uint8_t*  data);
 #endif
 
 
@@ -207,6 +238,7 @@ class midi2Processor{
     void (*recvPEGetInquiry)(uint8_t group, MIDICI ciDetails, peHeader requestDetails) = nullptr;
     void (*recvPESetReply)(uint8_t group, MIDICI ciDetails, peHeader requestDetails) = nullptr;
     void (*recvPESubReply)(uint8_t group, MIDICI ciDetails, peHeader requestDetails) = nullptr;
+    void (*recvPENotify)(uint8_t group, MIDICI ciDetails, peHeader requestDetails) = nullptr;
     void (*recvPESetInquiry)(uint8_t group, MIDICI ciDetails, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet) = nullptr;
     void (*recvPESubInquiry)(uint8_t group, MIDICI ciDetails, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet) = nullptr;
     uint8_t getPERequestId(uint8_t group, uint32_t muid ,uint8_t s7Byte);
@@ -238,6 +270,8 @@ class midi2Processor{
 			
 	void sendPESubReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
 	        uint16_t headerLen, uint8_t* header);		
+	void sendPENotify(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+	        uint16_t headerLen, uint8_t* header);
 	void sendPESetReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
 	        uint16_t headerLen, uint8_t* header);		
 			
@@ -246,9 +280,9 @@ class midi2Processor{
     inline void setRecvPEGetInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){ recvPEGetInquiry = fptr;}
     inline void setRecvPESetReply(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){ recvPESetReply = fptr;}
     inline void setRecvPESubReply(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){ recvPESubReply = fptr;}
+    inline void setRecvPENotify(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){ recvPENotify = fptr;}
     inline void setRecvPESetInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails, uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet)){ recvPESetInquiry = fptr;}
     inline void setRecvPESubInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails, uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet)){ recvPESubInquiry = fptr;}
-    //TODO PE Notify
 #endif
 	
 };

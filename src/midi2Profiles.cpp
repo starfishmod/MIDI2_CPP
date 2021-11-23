@@ -56,7 +56,7 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 			if(syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 17){
 				syExMessInt[group].buffer1[syExMessInt[group].pos-13] = s7Byte;
 			}
-			if (syExMessInt[group].pos == 16 && recvSetProfileOn != nullptr){
+			if (syExMessInt[group].pos == 17 && recvSetProfileOn != nullptr){
 				uint8_t profile[5] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1], syExMessInt[group].buffer1[2], syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
 				recvSetProfileOn(group,midici[group], profile);
 			}
@@ -65,7 +65,7 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 			if(syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 17){
 				syExMessInt[group].buffer1[syExMessInt[group].pos-13] = s7Byte;
 			}
-			if (syExMessInt[group].pos == 16 && recvSetProfileOff != nullptr){
+			if (syExMessInt[group].pos == 17 && recvSetProfileOff != nullptr){
 				uint8_t profile[5] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1], syExMessInt[group].buffer1[2], syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
 				recvSetProfileOff(group,midici[group], profile);
 			}
@@ -74,7 +74,7 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 			if(syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 17){
 				syExMessInt[group].buffer1[syExMessInt[group].pos-13] = s7Byte;
 			}
-			if (syExMessInt[group].pos == 16 && recvSetProfileEnabled != nullptr){
+			if (syExMessInt[group].pos == 17 && recvSetProfileEnabled != nullptr){
 				uint8_t profile[5] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1], syExMessInt[group].buffer1[2], syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
 				recvSetProfileEnabled(group,midici[group], profile);
 			}
@@ -83,11 +83,51 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 			if(syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 17){
 				syExMessInt[group].buffer1[syExMessInt[group].pos-13] = s7Byte;
 			}
-			if (syExMessInt[group].pos == 16 && recvSetProfileDisabled != nullptr){
+			if (syExMessInt[group].pos == 17 && recvSetProfileDisabled != nullptr){
 				uint8_t profile[5] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1], syExMessInt[group].buffer1[2], syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
 				recvSetProfileDisabled(group,midici[group], profile);
 			}
-			break;  
+			break;
+        case MIDICI_PROFILE_SPECIFIC_DATA:
+            //Profile
+            if(syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 17){
+                syExMessInt[group].buffer1[syExMessInt[group].pos-13] = s7Byte;
+                return;
+            }
+            if(syExMessInt[group].pos >= 18 || syExMessInt[group].pos <= 21){ //Length of Following Profile Specific Data
+                syExMessInt[group].intbuffer1[0] += s7Byte << (7 * (syExMessInt[group].pos - 18 ));
+                syExMessInt[group].intbuffer1[1] = 1;
+                return;
+            }
+
+
+            //******************
+
+            uint8_t charOffset = (syExMessInt[group].pos - 22) % PE_HEAD_BUFFERLEN;
+            uint16_t dataLength = syExMessInt[group].intbuffer1[0];
+            if(
+                    (syExMessInt[group].pos >= 22 && syExMessInt[group].pos <= 21 + dataLength)
+                    || 	(dataLength == 0 && syExMessInt[group].pos == 21)
+                    ){
+                if(dataLength != 0 )syExMessInt[group].buffer1[charOffset] = s7Byte;
+
+                bool lastByteOfSet = (syExMessInt[group].pos == 21 + dataLength);
+
+                if(charOffset == PE_HEAD_BUFFERLEN -1
+                   || syExMessInt[group].pos == 21 + dataLength
+                   || dataLength == 0
+                        ){
+                    uint8_t profile[5] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1], syExMessInt[group].buffer1[2], syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
+
+                    recvProfileDetails(group, midici[group], profile, charOffset+1, syExMessInt[group].buffer1, syExMessInt[group].intbuffer1[1], lastByteOfSet);
+                    syExMessInt[group].intbuffer1[1]++;
+                }
+            }
+
+
+            //***********
+
+            break;
 	}
 }
 
@@ -177,6 +217,20 @@ void midi2Processor::sendProfileDisabled(uint8_t group, uint32_t srcMUID, uint32
 }
 
 
-
+void midi2Processor::sendProfileSpecificData(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination,
+                             uint8_t* profile, uint16_t datalen, uint8_t*  data){
+    if(sendOutSysex == nullptr) return;
+    uint8_t sysex[13];
+    MIDICI midiCiHeader;
+    midiCiHeader.ciType = MIDICI_PROFILE_SPECIFIC_DATA;
+    midiCiHeader.localMUID = srcMUID;
+    midiCiHeader.remoteMUID = destMuid;
+    midiCiHeader.deviceId = destination;
+    createCIHeader(sysex, midiCiHeader);
+    sendOutSysex(group,sysex,13,1);
+    setBytesFromNumbers(sysex, datalen, 0, 4);
+    sendOutSysex(group,sysex,4,2);
+    sendOutSysex(group,data,datalen,3);
+}
 
 #endif

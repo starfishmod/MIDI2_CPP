@@ -24,8 +24,6 @@
 
 
 midi2Processor::midi2Processor(uint8_t numRequestsTotal){
-
-	
 	#ifndef M2_DISABLE_PE
 	numRequests = numRequestsTotal;
 	peRquestDetails  = ( struct peHeader * )malloc(sizeof(peHeader) *  numRequestsTotal);
@@ -34,42 +32,15 @@ midi2Processor::midi2Processor(uint8_t numRequestsTotal){
         cleanupRequest(i);
 	}
 	#endif
-	
-	
-	/*sys7CharBuffer = (uint8_t**)malloc(sizeof(uint8_t*) * groups);
-	for(uint8_t i=0; i< groups; i++){
-		*(sys7CharBuffer + i) = (uint8_t*)malloc(sizeof(uint8_t*) * 
-		#ifndef M2_DISABLE_PE
-		PE_HEAD_BUFFERLEN
-		#else
-		20
-		#endif
-		);
-	}
-	
-	sys7IntBuffer = (uint16_t**)malloc(sizeof(uint16_t*) * groups);
-	for(uint8_t i=0; i< groups; i++){
-		*(sys7IntBuffer + i) = (uint16_t*)malloc(sizeof(uint16_t) * 
-		#ifndef M2_DISABLE_PE
-		5
-		#else
-		2
-		#endif
-		);
-	}*/
-	
-	//debug("MIDICI Inst loaded");
 }
 
 midi2Processor::~midi2Processor() {
 	#ifndef M2_DISABLE_PE
 	free(peRquestDetails); peRquestDetails = nullptr;
 	#endif
-	
 }
 
 void midi2Processor::createCIHeader(uint8_t* sysexHeader, MIDICI midiCiHeader){
-
 	sysexHeader[0]=S7UNIVERSAL_NRT;
 	sysexHeader[1]=midiCiHeader.deviceId;//MIDI_PORT;
 	sysexHeader[2]=S7MIDICI;
@@ -80,8 +51,6 @@ void midi2Processor::createCIHeader(uint8_t* sysexHeader, MIDICI midiCiHeader){
 }
 
 void midi2Processor::endSysex7(uint8_t group){
-    //midici[group]._state = false;
-    //debug("endSysex7");
     syExMessInt[group].pos = 0;
     syExMessInt[group].realtime = 0;
     syExMessInt[group].universalId = 0;
@@ -96,8 +65,6 @@ void midi2Processor::endSysex7(uint8_t group){
 }
 
 void midi2Processor::startSysex7(uint8_t group){
-	//Reset ALL SYSEX etc
-    //midici[group]._state = false;
     syExMessInt[group].pos = 0;
 }
 
@@ -200,8 +167,8 @@ void midi2Processor::processSysEx(uint8_t group, uint8_t s7Byte){
 				break;	
 					
 		}*/
-	}else {
-		//TODO send out custom SysEx 7 byte
+	}else if (recvUnknownSysEx != nullptr){
+        recvUnknownSysEx(group, &syExMessInt[group], s7Byte);
 	}
 	syExMessInt[group].pos++;
 }
@@ -226,15 +193,13 @@ void midi2Processor::processMIDICI(uint8_t group, uint8_t s7Byte){
        && midici[group].localMUID != M2_CI_BROADCAST
        && checkMUID && !checkMUID(group, midici[group].localMUID)
         ){
-		//Serial.println("  -> Not for this device ");
 		return; //Not for this device
 	}
 	
 	//break up each Process based on ciType
     if(syExMessInt[group].pos >= 12) {
         switch (midici[group].ciType) {
-            case MIDICI_DISCOVERY: //Discovery Request'
-                //debug("  - Discovery Request ");//debug(syExMessInt[group].pos);debug(s7Byte);
+            case MIDICI_DISCOVERY: //Discovery Request
                 if (syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 23) {
                     syExMessInt[group].buffer1[syExMessInt[group].pos - 13] = s7Byte;
                 }
@@ -264,27 +229,6 @@ void midi2Processor::processMIDICI(uint8_t group, uint8_t s7Byte){
                                 syExMessInt[group].intbuffer1[1]
                         );
                     }
-
-                    //Send Discovery Reply
-                    //debug("  -> Discovery Reply ");
-                    /*if(sendOutSysex == nullptr) return;
-                    //debug("  -> Discovery Reply 2");
-
-                    uint8_t sysex[13];
-                    addCIHeader(MIDICI_DISCOVERYREPLY,sysex,0x01);
-                    setBytesFromNumbers(sysex, midici[group].remoteMUID, 9, 4);
-
-                    sendOutSysex(group,sysex,13,1);
-                    sendOutSysex(group,sysexId,3,2);
-                    sendOutSysex(group,famId,2,2);
-                    sendOutSysex(group,modelId,2,2);
-                    sendOutSysex(group,ver,4,2);
-
-                    //Capabilities
-                    sysex[0]=ciSupport;
-                    setBytesFromNumbers(sysex, sysExMax, 1, 4);
-                    sendOutSysex(group,sysex,5,3);*/
-
                 }
 
                 break;
@@ -342,31 +286,39 @@ void midi2Processor::processMIDICI(uint8_t group, uint8_t s7Byte){
                 break;
 
 #ifndef M2_DISABLE_PROTOCOL
+            case MIDICI_PROTOCOL_NEGOTIATION:
+            case MIDICI_PROTOCOL_NEGOTIATION_REPLY:
+            case MIDICI_PROTOCOL_SET:
+            case MIDICI_PROTOCOL_TEST:
+            case MIDICI_PROTOCOL_TEST_RESPONDER:
+            case MIDICI_PROTOCOL_CONFIRM:
+                processProtocolSysex(group, s7Byte);
+                break;
 #endif
 
 #ifndef M2_DISABLE_PROFILE
-            case 0x20: //Profile Inquiry
-            case 0x21: //Reply to Profile Inquiry
-            case 0x22: //Set Profile On Message
-            case 0x23: //Set Profile Off Message
-            case 0x24: //Set Profile Enabled Message
-            case 0x25: //Set Profile Disabled Message
-            case 0x2F: //ProfileSpecific Data
+            case MIDICI_PROFILE_INQUIRY: //Profile Inquiry
+            case MIDICI_PROFILE_INQUIRYREPLY: //Reply to Profile Inquiry
+            case MIDICI_PROFILE_SETON: //Set Profile On Message
+            case MIDICI_PROFILE_SETOFF: //Set Profile Off Message
+            case MIDICI_PROFILE_ENABLED: //Set Profile Enabled Message
+            case MIDICI_PROFILE_DISABLED: //Set Profile Disabled Message
+            case MIDICI_PROFILE_SPECIFIC_DATA: //ProfileSpecific Data
                 processProfileSysex(group, s7Byte);
                 break;
 #endif
 
 
 #ifndef M2_DISABLE_PE
-            case 0x30: //Inquiry: Property Exchange Capabilities
-            case 0x31: //Reply to Property Exchange Capabilities
-            case 0x34:  // Inquiry: Get Property Data
-            case 0x35: // Reply To Get Property Data - Needs Work!
-            case 0x36: // Inquiry: Set Property Data
-            case 0x37: // Reply To Inquiry: Set Property Data
-            case 0x38: // Inquiry: Subscribe Property Data
-            case 0x39: // Reply To Subscribe Property Data
-            case 0x3F: // Notify
+            case MIDICI_PE_CAPABILITY: //Inquiry: Property Exchange Capabilities
+            case MIDICI_PE_CAPABILITYREPLY: //Reply to Property Exchange Capabilities
+            case MIDICI_PE_GET:  // Inquiry: Get Property Data
+            case MIDICI_PE_GETREPLY: // Reply To Get Property Data - Needs Work!
+            case MIDICI_PE_SET: // Inquiry: Set Property Data
+            case MIDICI_PE_SETREPLY: // Reply To Inquiry: Set Property Data
+            case MIDICI_PE_SUB: // Inquiry: Subscribe Property Data
+            case MIDICI_PE_SUBREPLY: // Reply To Subscribe Property Data
+            case MIDICI_PE_NOTIFY: // Notify
                 processPESysex(group, s7Byte);
                 break;
 #endif
@@ -465,8 +417,7 @@ void midi2Processor::processUMP(uint32_t UMP){
 			uint8_t channel = (umpMess[0] >> 16) & 0xF;
 			uint8_t val1 = (umpMess[0] >> 8) & 0x7F;
 			uint8_t val2 = umpMess[0] & 0x7F;
-			
-			
+
 			switch(status){
 				case NOTE_OFF: //Note Off
 					if(midiNoteOff != nullptr) midiNoteOff(group, channel, val1, scaleUp(val2,7,16), 0, 0);
@@ -672,19 +623,8 @@ void midi2Processor::sendIdentityRequest (uint8_t group){
 }
 void midi2Processor::processDeviceID(uint8_t group, uint8_t s7Byte){
 	if(syExMessInt[group].pos == 3 && s7Byte == 0x01){
-		//Identity Request - send a reply?
-		//Serial.println("  -Identity Request - send a reply");
-		/*uint8_t sysex[]={
-			S7UNIVERSAL_NRT,MIDI_PORT,S7IDREQUEST,0x02
-			,sysexId[0],sysexId[1],sysexId[2] //SyexId
-			,famId[0],famId[1] //family id
-			,modelId[0],modelId[1] //model id
-			,ver[0],ver[1],ver[2],ver[3] //version id
-		};
-		
-		if(sendOutSysex != nullptr) sendOutSysex(group, sysex,15,0);*/
         if(recvIdRequest != nullptr) recvIdRequest(group);
-		
+        return;
 	}
 	if(syExMessInt[group].pos == 3 && s7Byte == 0x02){
 		//Identity Reply
