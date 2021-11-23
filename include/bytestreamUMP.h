@@ -23,12 +23,7 @@
 
 #include <string.h>
 #include <stdio.h>
-
-#ifdef ARDUINO
-   #include <stdint.h>
-#else
-    #include <cstdint>
-#endif
+#include <cstdint>
 
 class midiBsToUMP{
 

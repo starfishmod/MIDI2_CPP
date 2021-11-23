@@ -135,8 +135,8 @@ class midi2Processor{
 	
 	inline void setCheckMUID(bool (*fptr)(uint8_t group, uint32_t muid)){ checkMUID = fptr; }
 	inline void setRawSysEx(void (*fptr)(uint8_t group, uint8_t *sysex ,uint16_t length, uint8_t state)){ sendOutSysex = fptr; }
-	inline void setRecvDiscovery(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex)){ recvDiscoveryRequest = fptr;}
-	inline void setRecvDiscoveryReply(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex)){ recvDiscoveryReply = fptr;}
+	inline void setRecvDiscovery(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* sysExId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex)){ recvDiscoveryRequest = fptr;}
+	inline void setRecvDiscoveryReply(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* sysExId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex)){ recvDiscoveryReply = fptr;}
 	inline void setRecvNAK(void (*fptr)(uint8_t group, MIDICI ciDetails)){ recvNAK = fptr;}
 	inline void setRecvInvalidateMUID(void (*fptr)(uint8_t group, MIDICI ciDetails, uint32_t terminateMuid)){ recvInvalidateMUID = fptr;}
 	inline void setRecvUnknownMIDICI(void (*fptr)(uint8_t group, umpSysex7Internal * syExMess, MIDICI ciDetails, uint8_t s7Byte)){ recvUnknownMIDICI = fptr;}

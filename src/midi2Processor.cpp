@@ -321,16 +321,18 @@ void midi2Processor::processMIDICI(uint8_t group, uint8_t s7Byte){
                 break;
 
             case MIDICI_INVALIDATEMUID: //MIDI-CI Invalidate MUID Message
-                if (syExMessInt[group].pos == 13) {
-                    midici[group].localMUID = 0;
-                }
 
                 if (syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 16) {
-                    midici[group].localMUID += s7Byte << (7 * (syExMessInt[group].pos - 13));
+                    syExMessInt[group].buffer1[syExMessInt[group].pos - 13] = s7Byte;
                 }
+
                 //THis needs fixing - don't use localMUID for terminate
                 if (syExMessInt[group].pos == 16 && recvInvalidateMUID != nullptr) {
-                    recvInvalidateMUID(group, midici[group], midici[group].localMUID);
+                    uint32_t terminateMUID = syExMessInt[group].buffer1[0]
+                            + ((uint32_t)syExMessInt[group].buffer1[1] << 7)
+                            + ((uint32_t)syExMessInt[group].buffer1[2] << 14)
+                            + ((uint32_t)syExMessInt[group].buffer1[3] << 21);
+                    recvInvalidateMUID(group, midici[group], terminateMUID);
                 }
                 break;
             case MIDICI_NAK: //MIDI-CI NAK

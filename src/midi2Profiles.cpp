@@ -56,7 +56,7 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 			if(syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 17){
 				syExMessInt[group].buffer1[syExMessInt[group].pos-13] = s7Byte;
 			}
-			if (syExMessInt[group].pos == 16 && recvInvalidateMUID != nullptr){
+			if (syExMessInt[group].pos == 16 && recvSetProfileOn != nullptr){
 				uint8_t profile[5] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1], syExMessInt[group].buffer1[2], syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
 				recvSetProfileOn(group,midici[group], profile);
 			}
@@ -65,7 +65,7 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 			if(syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 17){
 				syExMessInt[group].buffer1[syExMessInt[group].pos-13] = s7Byte;
 			}
-			if (syExMessInt[group].pos == 16 && recvInvalidateMUID != nullptr){
+			if (syExMessInt[group].pos == 16 && recvSetProfileOff != nullptr){
 				uint8_t profile[5] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1], syExMessInt[group].buffer1[2], syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
 				recvSetProfileOff(group,midici[group], profile);
 			}
@@ -74,7 +74,7 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 			if(syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 17){
 				syExMessInt[group].buffer1[syExMessInt[group].pos-13] = s7Byte;
 			}
-			if (syExMessInt[group].pos == 16 && recvInvalidateMUID != nullptr){
+			if (syExMessInt[group].pos == 16 && recvSetProfileEnabled != nullptr){
 				uint8_t profile[5] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1], syExMessInt[group].buffer1[2], syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
 				recvSetProfileEnabled(group,midici[group], profile);
 			}
@@ -83,7 +83,7 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 			if(syExMessInt[group].pos >= 13 && syExMessInt[group].pos <= 17){
 				syExMessInt[group].buffer1[syExMessInt[group].pos-13] = s7Byte;
 			}
-			if (syExMessInt[group].pos == 16 && recvInvalidateMUID != nullptr){
+			if (syExMessInt[group].pos == 16 && recvSetProfileDisabled != nullptr){
 				uint8_t profile[5] = {syExMessInt[group].buffer1[0], syExMessInt[group].buffer1[1], syExMessInt[group].buffer1[2], syExMessInt[group].buffer1[3], syExMessInt[group].buffer1[4]};
 				recvSetProfileDisabled(group,midici[group], profile);
 			}

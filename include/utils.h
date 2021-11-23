@@ -138,7 +138,6 @@ struct MIDICI{
     uint8_t ciVer = 1;
     uint32_t remoteMUID = M2_CI_BROADCAST;
     uint32_t localMUID = 0;
-
 };
 
 struct umpSysex7Internal {
