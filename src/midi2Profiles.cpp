@@ -103,7 +103,7 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 
             //******************
 
-            uint8_t charOffset = (syExMessInt[group].pos - 22) % PE_HEAD_BUFFERLEN;
+            uint8_t charOffset = (syExMessInt[group].pos - 22) % S7_BUFFERLEN;
             uint16_t dataLength = syExMessInt[group].intbuffer1[0];
             if(
                     (syExMessInt[group].pos >= 22 && syExMessInt[group].pos <= 21 + dataLength)
@@ -113,7 +113,7 @@ void midi2Processor::processProfileSysex(uint8_t group, uint8_t s7Byte){
 
                 bool lastByteOfSet = (syExMessInt[group].pos == 21 + dataLength);
 
-                if(charOffset == PE_HEAD_BUFFERLEN -1
+                if(charOffset == S7_BUFFERLEN -1
                    || syExMessInt[group].pos == 21 + dataLength
                    || dataLength == 0
                         ){

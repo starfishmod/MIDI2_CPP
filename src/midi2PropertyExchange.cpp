@@ -82,7 +82,7 @@ void midi2Processor::processPESysex(uint8_t group, uint8_t s7Byte){
 
 		uint16_t bodyLength = syExMessInt[group].intbuffer1[1];
         uint16_t initPos = 22 + headerLength;
-        uint8_t charOffset = (syExMessInt[group].pos - initPos) % PE_HEAD_BUFFERLEN;
+        uint8_t charOffset = (syExMessInt[group].pos - initPos) % S7_BUFFERLEN;
 
 		if(
 			(syExMessInt[group].pos >= initPos && syExMessInt[group].pos <= initPos - 1 + bodyLength)
@@ -92,7 +92,7 @@ void midi2Processor::processPESysex(uint8_t group, uint8_t s7Byte){
 
             bool lastByteOfSet = (peRquestDetails[peRequestIdx].numChunks == peRquestDetails[peRequestIdx].totalChunks && syExMessInt[group].pos == initPos - 1 + bodyLength);
 			
-			if(charOffset == PE_HEAD_BUFFERLEN -1 
+			if(charOffset == S7_BUFFERLEN -1
 				|| syExMessInt[group].pos == initPos - 1 + bodyLength
 				|| bodyLength == 0 
 			){

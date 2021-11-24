@@ -61,16 +61,6 @@ uint32_t scaleDown(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits) {
 	return srcVal >> scaleBits;
 }
 
-uint32_t getNumberFromBytes(const uint8_t* message, uint8_t offset, uint8_t amount){
-
-    uint32_t num = 0;
-    uint8_t upperOffset = offset + amount;
-	for(short offsetC = offset; offsetC<upperOffset;offsetC++){
-		num += (uint32_t)(message[offsetC] << (7* (offsetC-offset)));
-	}
-	return num;
-}
-
 void setBytesFromNumbers(uint8_t* message, long number, uint8_t start, uint8_t amount){
 	for(int amountC = amount; amountC>0;amountC--){
 		message[start++] = number & 127;

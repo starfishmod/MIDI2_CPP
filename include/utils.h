@@ -53,6 +53,9 @@
 #define ACTIVESENSE 0xFE
 #define SYSTEMRESET 0xFF
 
+#ifndef S7_BUFFERLEN
+#define S7_BUFFERLEN	36
+#endif
 #define S7UNIVERSAL_NRT 0x7E
 #define S7UNIVERSAL_RT 0x7F
 #define S7IDREQUEST 0x06
@@ -157,12 +160,12 @@ struct umpSysex7Internal {
     uint8_t universalId = 0;
     uint8_t peRequestIdx = 255;
     uint16_t pos = 0;
-    uint8_t buffer1[PE_HEAD_BUFFERLEN];
+    uint8_t buffer1[S7_BUFFERLEN]{};
     /* in Discovery this is [sysexID1,sysexID2,sysexID3,famId1,famid2,modelId1,modelId2,ver1,ver2,ver3,ver4]
      * in Profiles this is [pf1, pf1, pf3, pf4, pf5]
      */
 
-    uint16_t intbuffer1[2];
+    uint16_t intbuffer1[2]{};
     /* in Discovery this is [ciSupport, maxSysex]
      * in Profile Inquiry Reply, this is [Enabled Profiles Length, Disabled Profile Length]
      * in PE this is [header length, Body Length]
@@ -189,9 +192,9 @@ struct peHeader {
     int  numChunks = -1;
     int  partialChunkCount = 1;
     int mutualEncoding = -1;
-    char mediaType[PE_HEAD_BUFFERLEN];
-    void * _pvoid;
-    uint8_t _headerProp;
+    char mediaType[PE_HEAD_BUFFERLEN]{};
+    void * _pvoid{};
+    uint8_t _headerProp{};
     uint8_t _headerState = PE_HEAD_KEY + PE_HEAD_STATE_IN_OBJECT;
     uint8_t _headerPos = 0;
 
@@ -204,10 +207,8 @@ uint32_t scaleUp(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits);
 
 uint32_t scaleDown(uint32_t srcVal, uint8_t srcBits, uint8_t dstBits);
 
-uint32_t getNumberFromBytes(const uint8_t* message, uint8_t offset, uint8_t amount);
 
 void setBytesFromNumbers(uint8_t* message, long number, uint8_t start, uint8_t amount);
 
-void printUMP(uint32_t UMP);
 
 #endif

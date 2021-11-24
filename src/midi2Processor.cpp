@@ -100,26 +100,55 @@ void midi2Processor::processSysEx(uint8_t group, uint8_t s7Byte){
 			case 0x03:
 			case 0x05: // Sample Dump Extensions
 				break;
-			case 0x04: // MIDI Time Code
+			 */
+
+            #ifdef M2_ENABLE_MTC
+            case 0x04: // MIDI Time Code
+			    //MIDI Cueing Set-Up Messages - F0 7E <device ID> 04 <sub-ID 2> hr mn sc fr ff sl sm <add. info.> F7
 				break;
-			*/
+            #endif
+
 			#ifndef M2_DISABLE_IDREQ  
 			case S7IDREQUEST:
 				processDeviceID(group, s7Byte);
 				break;
-			#endif
+            #endif
+
 			/*
 			case 0x07 : // File Dump
 				break;
+			 */
+
+            #if defined(M2_ENABLE_MIDI_TUNING_STANDARD) || defined(M2_ENABLE_GM2)
 			case 0x08 : // MIDI Tuning Standard (Non-Real Time)
-				break;	
-			case 0x09 : // General MIDI
+			    //BULK TUNING DUMP REQUEST - F0 7E <device ID> 08 00 <tt- tuning program number (0 – 127)> F7
+			    //BULK TUNING DUMP - F0 7E <device ID> 08 01 tt <tuning name(16)> [xx yy zz](128) chksum F7
+			    //BULK TUNING DUMP REQUEST (BANK) - F0 7E 08 03 <bb - bank: 0-127> tt F7
+			    //KEY-BASED TUNING DUMP - F0 7E <device ID> 08 04 bb tt <tuning name>(16) [xx yy zz](128) chksum F7
+			    //SINGLE NOTE TUNING CHANGE (BANK) F0 7E <device ID> 08 07 bb tt ll
+                    //[<MIDI key number> <frequency data for that key>(3)](ll) F7
+                //SCALE/OCTAVE TUNING DUMP, 1 byte format - F0 7E <device ID> 08 05 bb tt <tuning name>(16) [xx](12) chksum F7
+                //SCALE/OCTAVE TUNING DUMP, 2 byte format - F0 7E <device ID> 08 06 bb tt <tuning name>(16) [xx yy](12) chksum F7
+                //SCALE/OCTAVE TUNING 1-BYTE FORM - F0 7E <device ID> 08 08 <ff - channel/options>
+                    //<gg -channel byte 2> <hh -channel byte 3> [ss](12)  F7
+                ///SCALE/OCTAVE TUNING 2-BYTE FORM - F0 7E <device ID> 08 09 ff gg hh [ss tt](12) F7
 				break;
-			case 0x0A : // Downloadable Sounds
+            #endif
+
+            #if defined(M2_ENABLE_GM1) || defined(M2_ENABLE_GM2)
+			case 0x09 : // General MIDI
+                // GM2 System On - F0 7E <device ID> 09 03 F7
+                // GM1 System On - F0 7E <device ID> 09 01 F7
+                // GM System Off - F0 7E <device ID> 09 02 F7
+				break;
+            #endif
+
+			/*case 0x0A : // Downloadable Sounds
 				break;
 			case 0x0B : // File Reference Message
 				break;
 			case 0x0C : // MIDI Visual Control
+			    //FOH 7EH Dev OCH 01H {. . .} F7H
 				break;	
 			case 0x7B : // End of File
 				break;	
@@ -139,34 +168,66 @@ void midi2Processor::processSysEx(uint8_t group, uint8_t s7Byte){
 		}
 	}else if(syExMessInt[group].realtime == S7UNIVERSAL_RT) {
 		//This block of code represents potential future Universal SysEx Work
-		/*switch(midici[group].universalId){
-			
+		switch(syExMessInt[group].universalId){
+            #ifdef M2_ENABLE_MTC
 			case 0x01: // MIDI Time Code
+		        //Full Message - F0 7F <device ID> 01 <sub-ID 2> hr mn sc fr F7
+		        //User Bits Message - F0 7F <device ID> 01 <sub-ID 2> u1 u2 u3 u4 u5 u6 u7 u8 u9 F7
 				break
-			case 0x02: // MIDI Show Control
+            #endif
+
+			/*case 0x02: // MIDI Show Control
 				break;
 			case 0x03: // Notation Information
-				break;
+				break;*/
+
+            #ifdef M2_ENABLE_GM2
 			case 0x04: // Device Control
-				break;	
-			case 0x05: // Real Time MTC Cueing
+		        //GLOBAL PARAMETER CONTROL - F0 7F <device ID> 04 05 sw pw vw [[sh sl] ... ] [pp vv] ... F7
+                //MASTER FINE TUNING - F0 7F <device ID> 04 03 lsb msb F7
+                //MASTER COARSE TUNING - F0 7F <device ID> 04 04 00 msb F7
 				break;
-			case 0x06: // MIDI Machine Control Commands
+            #endif
+
+            #ifdef M2_ENABLE_MTC
+			case 0x05: // Real Time MTC Cueing
+		        //Real Time MIDI Cueing Set-Up Message - F0 7F <device ID> 05 <sub-id #2> sl sm <additional info.> F7
+				break;
+            #endif
+
+            /*case 0x06: // MIDI Machine Control Commands
 				break;
 			case 0x07 : // MIDI Machine Control Responses
-				break;
+				break;*/
+
+            #if defined(M2_ENABLE_MIDI_TUNING_STANDARD) || defined(M2_ENABLE_GM2)
 			case 0x08 : // MIDI Tuning Standard (Real Time)
-				break;	
+		        //SINGLE NOTE TUNING CHANGE F0 7F <device ID> 08 02 <tt tuning program number (0 – 127)>
+		            //<ll - number of changes> [<MIDI key number> <frequency data for that key>(3)](ll) F7
+                //SINGLE NOTE TUNING CHANGE (BANK) F0 7F <device ID> 08 07 bb tt ll
+                    //[<MIDI key number> <frequency data for that key>(3)](ll) F7
+                //SCALE/OCTAVE TUNING 1-BYTE FORM - F0 7F <device ID> 08 08 <ff - channel/options>
+                    //<gg -channel byte 2> <hh - channel byte 3> [ss](12)  F7
+                //SCALE/OCTAVE TUNING 2-BYTE FORM - F0 7F <device ID> 08 09 ff gg hh [ss tt](12) F7
+				break;
+            #endif
+
+            #ifdef M2_ENABLE_GM2
 			case 0x09 : // Controller Destination Setting (See GM2 Documentation)
+                //Channel Pressure/Polyphonic Key Pressure - F0 7F <device ID> 09 01/02 0n [pp rr] ... F7
+                //Control Change - F0 7F <device ID> 09 03 0n cc [pp rr] ... F7
 				break;
 			case 0x0A : // Key-based Instrument Control
-				break;	
-			case 0x0B : // Scalable Polyphony MIDI MIP Message
+                //KEY-BASED INSTRUMENT CONTROL - F0 7F <device ID> 0A 01 0n kk [nn vv] .. F7
+				break;
+            #endif
+
+            /*case 0x0B : // Scalable Polyphony MIDI MIP Message
 				break;
 			case 0x0C : // Mobile Phone Control Message
 				break;	
-					
-		}*/
+		    */
+		}
 	}else if (recvUnknownSysEx != nullptr){
         recvUnknownSysEx(group, &syExMessInt[group], s7Byte);
 	}
@@ -270,7 +331,7 @@ void midi2Processor::processMIDICI(uint8_t group, uint8_t s7Byte){
                     syExMessInt[group].buffer1[syExMessInt[group].pos - 13] = s7Byte;
                 }
 
-                //THis needs fixing - don't use localMUID for terminate
+                //terminate MUID
                 if (syExMessInt[group].pos == 16 && recvInvalidateMUID != nullptr) {
                     uint32_t terminateMUID = syExMessInt[group].buffer1[0]
                             + ((uint32_t)syExMessInt[group].buffer1[1] << 7)
