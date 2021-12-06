@@ -1,6 +1,5 @@
 #include "../include/midi2Profiles.h"
 #include "../include/midi2Processor.h"
-#include <cstdint>
 #ifndef M2_DISABLE_PROFILE
 
 
@@ -164,56 +163,34 @@ void midi2Processor::sendProfileListResponse(uint8_t group, uint32_t srcMUID, ui
 	sendOutSysex(group,profilesDisabled,profilesDisabledLen*5,3);
 }
 
-void midi2Processor::sendProfileOn(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex == nullptr) return;
-	uint8_t sysex[13];
+void midi2Processor::sendProfileMessage(uint8_t group, uint32_t srcMUID, uint32_t destMuid,  uint8_t destination,
+                                        uint8_t* profile, uint8_t ciType){
+    if(sendOutSysex == nullptr) return;
+    uint8_t sysex[13];
     MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PROFILE_SETON;
+    midiCiHeader.ciType = ciType;
     midiCiHeader.localMUID = srcMUID;
     midiCiHeader.remoteMUID = destMuid;
     midiCiHeader.deviceId = destination;
     createCIHeader(sysex, midiCiHeader);
-	sendOutSysex(group,sysex,13,1);
-	sendOutSysex(group,profile,5,3);
+    sendOutSysex(group,sysex,13,1);
+    sendOutSysex(group,profile,5,3);
+}
+
+void midi2Processor::sendProfileOn(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination, uint8_t* profile){
+    sendProfileMessage(group, srcMUID, destMuid, destination, profile, (uint8_t) MIDICI_PROFILE_SETON);
 }
 
 void midi2Processor::sendProfileOff(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex == nullptr) return;
-	uint8_t sysex[13];
-    MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PROFILE_SETOFF;
-    midiCiHeader.localMUID = srcMUID;
-    midiCiHeader.remoteMUID = destMuid;
-    midiCiHeader.deviceId = destination;
-    createCIHeader(sysex, midiCiHeader);
-	sendOutSysex(group,sysex,13,1);
-	sendOutSysex(group,profile,5,3);
+    sendProfileMessage(group, srcMUID, destMuid, destination, profile, (uint8_t) MIDICI_PROFILE_SETOFF);
 }
 
 void midi2Processor::sendProfileEnabled(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex == nullptr) return;
-	uint8_t sysex[13];
-    MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PROFILE_ENABLED;
-    midiCiHeader.localMUID = srcMUID;
-    midiCiHeader.remoteMUID = destMuid;
-    midiCiHeader.deviceId = destination;
-    createCIHeader(sysex, midiCiHeader);
-	sendOutSysex(group,sysex,13,1);
-	sendOutSysex(group,profile,5,3);
+    sendProfileMessage(group, srcMUID, destMuid, destination, profile, (uint8_t) MIDICI_PROFILE_ENABLED);
 }
 
 void midi2Processor::sendProfileDisabled(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination, uint8_t* profile){
-	if(sendOutSysex == nullptr) return;
-	uint8_t sysex[13];
-    MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PROFILE_DISABLED;
-    midiCiHeader.localMUID = srcMUID;
-    midiCiHeader.remoteMUID = destMuid;
-    midiCiHeader.deviceId = destination;
-    createCIHeader(sysex, midiCiHeader);
-	sendOutSysex(group,sysex,13,1);
-	sendOutSysex(group,profile,5,3);
+    sendProfileMessage(group, srcMUID, destMuid, destination, profile, (uint8_t) MIDICI_PROFILE_DISABLED);
 }
 
 

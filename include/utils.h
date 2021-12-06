@@ -106,10 +106,8 @@
 #define MIDICI_PE_MCODED7 1
 #define MIDICI_PE_MCODED7ZLIB 3
 
-
 #define MIDI_PORT 0x7F
 #define M2_CI_BROADCAST 0xFFFFFFF
-
 
 #define PE_HEAD_STATE_IN_OBJECT          2
 #define PE_HEAD_STATE_IN_STRING          4
@@ -129,6 +127,7 @@
 #define UMP_M1CVM 0x02
 #define UMP_SYSEX7 0x03
 #define UMP_M2CVM 0x04
+#define UMP_DATA 0x05
 
 #ifdef MIDI1BYTESTREAMONLY
     #define UMPGROUPS 1

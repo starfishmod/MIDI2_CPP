@@ -44,7 +44,6 @@ Can be found on the [WIKI](https://github.com/starfishmod/MIDI2_CPP/wiki)
 ### TODO
 * PE Handling of Mcoded7 (80%)
 * SysEx8 and Mixed Data Set
-* Handling of Per Note Controllers
 * Universal SysEx handling (Other than Device ID and MIDI-CI)
 
 ### Example: Translate MIDI 1.0 Byte stream to UMP

@@ -401,10 +401,11 @@ void midi2Processor::processUMP(uint32_t UMP){
 	uint8_t group = (umpMess[0] >> 24) & 0xF;
 
 	
-	if(messPos == 0 && mt <= UMP_M1CVM){ //32bit Messages
+	if(messPos == 0
+        && (mt <= UMP_M1CVM || mt==0x6 || mt==0x7)
+            ){ //32bit Messages
 
 		if(mt == UMP_UTILITY){ //32 bits Utility Messages
-			// TODO Break up into JR TimeStamp Messages offsets
 			uint8_t status = (umpMess[0] >> 20) & 0xF;
 			
 			#ifndef M2_DISABLE_JR
@@ -506,7 +507,9 @@ void midi2Processor::processUMP(uint32_t UMP){
         return;
 		
 	}else		
-	if(messPos == 1 && mt <= UMP_M2CVM){ //64bit Messages
+	if(messPos == 1
+       && (mt == UMP_SYSEX7 || mt == UMP_M2CVM || mt==0x8 || mt==0x9  || mt==0xA)
+        ){ //64bit Messages
 		if(mt == UMP_SYSEX7){ //64 bits Data Messages (including System Exclusive)
 			
 			uint8_t numbytes  = (umpMess[0] >> 16) & 0xF;
@@ -560,7 +563,8 @@ void midi2Processor::processUMP(uint32_t UMP){
 				
 				case RPN_RELATIVE: //Relative RPN
 					if(rrpn != nullptr) rrpn(group, channel, val1, val2, (int32_t)umpMess[1]/*twoscomplement*/);
-					break;	
+					break;
+
 				case NRPN_RELATIVE: //Relative NRPN
 					if(rnrpn != nullptr) rnrpn(group, channel, val1, val2, (int32_t)umpMess[1]/*twoscomplement*/);
 					break;
@@ -568,35 +572,95 @@ void midi2Processor::processUMP(uint32_t UMP){
 				case PROGRAM_CHANGE: //Program Change Message
 					if(programChange != nullptr) programChange(group, channel, umpMess[1] >> 24, umpMess[0] & 1 , (umpMess[1] >> 8) & 0x7f , umpMess[1] & 0x7f);
 					break;
+
 				case CHANNEL_PRESSURE: //Channel Pressure
 					if(channelPressure != nullptr) channelPressure(group, channel, umpMess[1]);
 					break;
+
 				case PITCH_BEND: //PitchBend
 					if(pitchBend != nullptr) pitchBend(group, channel, umpMess[1]);
 					break;	
 					
 				case PITCH_BEND_PERNOTE: //Per Note PitchBend 6
-					//if(midiNoteOn != 0) channelPressure(group, channel, val1, umpMess[1]); 
-					break;		
+					if(perNotePB != 0) perNotePB(group, channel, val1, umpMess[1]);
+					break;
+
 				case NRPN_PERNOTE: //Assignable Per-Note Controller 1
-					//if(midiNoteOn != 0) channelPressure(group, channel, val1, umpMess[1]); 
+                    if(nrpnPerNote != nullptr) nrpnPerNote(group, channel, val1, val2, umpMess[1]);
 					break;	
 					
-				case RPN_PERNOTE: //Registered Per-Note Controller 0 
-					//if(midiNoteOn != 0) channelPressure(group, channel, val1, umpMess[1]); 
+				case RPN_PERNOTE: //Registered Per-Note Controller 0
+                    if(rpnPerNote != nullptr) rpnPerNote(group, channel, val1, val2, umpMess[1]);
 					break;	
 					
 				case PERNOTE_MANAGE: //Per-Note Management Message
-					//if(midiNoteOn != 0) channelPressure(group, channel, val1, umpMess[1]); 
+                    if(perNoteManage != nullptr) perNoteManage(group, channel, val1, (bool)(val2 & 2), (bool)(val2 & 1));
 					break;	
 					
 			}
 		}
         messPos =0;
-	}else		
-	if(messPos == 3 && mt <= 0x05){ //128bit Messages
-		messPos =0;
-	} else {
+	}else
+    if(messPos == 2
+       && (mt == 0xB || mt == 0xC)
+            ){ //96bit Messages
+        messPos =0;
+    }else
+    if(messPos == 3
+             && (mt == UMP_DATA || mt >= 0xD)
+    ){ //128bit Messages
+        if(mt == UMP_DATA){ //128 bits Data Messages (including System Exclusive 8)
+            uint8_t status = (umpMess[0] >> 20) & 0xF;
+            //SysEx 8
+            if(status <= 3){
+                //SysEx 8
+                /*uint8_t numbytes  = (umpMess[0] >> 16) & 0xF;
+                uint8_t streamId  = (umpMess[0] >> 8) & 0xFF;
+                if(status == 0 || status == 1){
+                    startSysex7(group); //streamId
+                }
+
+                if(numbytes > 0)processSysEx(group, umpMess[0] & 0xFF);
+                if(numbytes > 1)processSysEx(group, (umpMess[1] >> 24) & 0xFF);
+                if(numbytes > 2)processSysEx(group, (umpMess[1] >> 16) & 0xFF);
+                if(numbytes > 3)processSysEx(group, (umpMess[1] >> 8) & 0xFF);
+                if(numbytes > 4)processSysEx(group, umpMess[1] & 0xFF);
+
+                if(numbytes > 5)processSysEx(group, (umpMess[2] >> 24) & 0xFF);
+                if(numbytes > 6)processSysEx(group, (umpMess[2] >> 16) & 0xFF);
+                if(numbytes > 7)processSysEx(group, (umpMess[2] >> 8) & 0xFF);
+                if(numbytes > 8)processSysEx(group, umpMess[2] & 0xFF);
+
+                if(numbytes > 9)processSysEx(group, (umpMess[3] >> 24) & 0xFF);
+                if(numbytes > 10)processSysEx(group, (umpMess[3] >> 16) & 0xFF);
+                if(numbytes > 11)processSysEx(group, (umpMess[3] >> 8) & 0xFF);
+                if(numbytes > 12)processSysEx(group, umpMess[3] & 0xFF);
+
+                if(status == 0 || status == 3){
+                    endSysex7(group);
+                }*/
+
+            }else if(status == 8 || status ==9){
+                //Beginning of Mixed Data Set
+                //uint8_t mdsId  = (umpMess[0] >> 16) & 0xF;
+
+                if(status == 8){
+                    /*uint16_t numValidBytes  = umpMess[0] & 0xFFFF;
+                    uint16_t numChunks  = (umpMess[1] >> 16) & 0xFFFF;
+                    uint16_t numOfChunk  = umpMess[1] & 0xFFFF;
+                    uint16_t manuId  = (umpMess[2] >> 16) & 0xFFFF;
+                    uint16_t deviceId  = umpMess[2] & 0xFFFF;
+                    uint16_t subId1  = (umpMess[3] >> 16) & 0xFFFF;
+                    uint16_t subId2  = umpMess[3] & 0xFFFF;*/
+                }else{
+                    // MDS bytes?
+                }
+
+            }
+
+        }
+        messPos =0;
+    } else {
 		messPos++;
 	}
 	

@@ -116,8 +116,6 @@ void midi2Processor::processPESysex(uint8_t group, uint8_t s7Byte){
 	
 }
 
-
-
 void midi2Processor::processPEHeader(uint8_t group, uint8_t peRequestIdx, uint8_t s7Byte){
 
     /*char messStr[20];
@@ -277,7 +275,10 @@ void midi2Processor::processPEHeader(uint8_t group, uint8_t peRequestIdx, uint8_
 	
 }
 
-void midi2Processor::sendPECapabilityRequest(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t numSimulRequests){
+//********
+
+void midi2Processor::sendPECapabilityRequest(uint8_t group, uint32_t srcMUID, uint32_t destMuid,
+                                             uint8_t numSimulRequests){
 	if(sendOutSysex == nullptr) return;
 	uint8_t sysex[14];
     MIDICI midiCiHeader;
@@ -289,7 +290,8 @@ void midi2Processor::sendPECapabilityRequest(uint8_t group, uint32_t srcMUID, ui
 	sendOutSysex(group,sysex,14,0);
 }
 
-void midi2Processor::sendPECapabilityReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t numSimulRequests){
+void midi2Processor::sendPECapabilityReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid,
+                                           uint8_t numSimulRequests){
     if(sendOutSysex == nullptr) return;
     uint8_t sysex[14];
     MIDICI midiCiHeader;
@@ -301,32 +303,15 @@ void midi2Processor::sendPECapabilityReply(uint8_t group, uint32_t srcMUID, uint
     sendOutSysex(group,sysex,14,0);
 }
 
-void midi2Processor::sendPEGet(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header){
-	if(sendOutSysex == nullptr) return;
-	uint8_t sysex[13];
-    MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PE_GET;
-    midiCiHeader.localMUID = srcMUID;
-    midiCiHeader.remoteMUID = destMuid;
-    createCIHeader(sysex, midiCiHeader);
-	sendOutSysex(group,sysex,13,1);
-	
-	sysex[0] = requestId;
-	setBytesFromNumbers(sysex, headerLen, 1, 2);
-	sendOutSysex(group,sysex,3,2);		
-	sendOutSysex(group, header,headerLen,2);
+//******
 
-    setBytesFromNumbers(sysex, 1, 0, 2);
-    setBytesFromNumbers(sysex, 1, 2, 2);
-    setBytesFromNumbers(sysex, 0, 4, 2);
-    sendOutSysex(group,sysex,6,3);
-}
-
-void midi2Processor::sendPESet(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
+void midi2Processor::sendPEWithBody(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                               uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk,
+                               uint16_t bodyLength, uint8_t* body, uint8_t ciType){
     if(sendOutSysex == nullptr) return;
     uint8_t sysex[13];
     MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PE_SET;
+    midiCiHeader.ciType = ciType;
     midiCiHeader.localMUID = srcMUID;
     midiCiHeader.remoteMUID = destMuid;
     createCIHeader(sysex, midiCiHeader);
@@ -345,139 +330,97 @@ void midi2Processor::sendPESet(uint8_t group, uint32_t srcMUID, uint32_t destMui
     sendOutSysex(group,body,bodyLength,3);
 }
 
-void midi2Processor::sendPEGetReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
-	if(sendOutSysex == nullptr) return;
-	uint8_t sysex[13];
+void midi2Processor::sendPESub(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                               uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk,
+                               uint16_t bodyLength , uint8_t* body ){
+    sendPEWithBody(group, srcMUID, destMuid, requestId, headerLen, header, numberOfChunks, numberOfThisChunk,
+            bodyLength , body , (uint8_t) MIDICI_PE_SUB);
+}
+
+void midi2Processor::sendPESet(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                               uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk,
+                               uint16_t bodyLength , uint8_t* body ){
+    sendPEWithBody(group, srcMUID, destMuid, requestId, headerLen, header, numberOfChunks, numberOfThisChunk,
+                   bodyLength , body , (uint8_t) MIDICI_PE_SET);
+}
+
+void midi2Processor::sendPEGetReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                                    uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks,
+                                    uint16_t numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
+    sendPEWithBody(group, srcMUID, destMuid, requestId, headerLen, header, numberOfChunks, numberOfThisChunk,
+                   bodyLength , body , (uint8_t) MIDICI_PE_GETREPLY);
+}
+
+//*********
+void midi2Processor::sendPEHeaderOnly(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                               uint16_t headerLen, uint8_t* header, uint8_t ciType){
+    if(sendOutSysex == nullptr) return;
+    uint8_t sysex[13];
     MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PE_GETREPLY;
+    midiCiHeader.ciType = ciType;
     midiCiHeader.localMUID = srcMUID;
     midiCiHeader.remoteMUID = destMuid;
     createCIHeader(sysex, midiCiHeader);
-	sendOutSysex(group,sysex,13,1);
-	
-	sysex[0] = requestId;
-	setBytesFromNumbers(sysex, headerLen, 1, 2);
-	sendOutSysex(group,sysex,3,2);		
-	sendOutSysex(group, header,headerLen,2);
-	
-	setBytesFromNumbers(sysex, numberOfChunks, 0, 2);
-	setBytesFromNumbers(sysex, numberOfThisChunk, 2, 2);
-	setBytesFromNumbers(sysex, bodyLength, 4, 2);
-	sendOutSysex(group,sysex,6,2);
-	
-	sendOutSysex(group,body,bodyLength,3);
+    sendOutSysex(group,sysex,13,1);
+
+    sysex[0] = requestId;
+    setBytesFromNumbers(sysex, headerLen, 1, 2);
+    sendOutSysex(group,sysex,3,2);
+    sendOutSysex(group, header,headerLen,2);
+
+    setBytesFromNumbers(sysex, 1, 0, 2);
+    setBytesFromNumbers(sysex, 1, 2, 2);
+    setBytesFromNumbers(sysex, 0, 4, 2);
+    sendOutSysex(group,sysex,6,3);
 }
 
-void midi2Processor::sendPEGetReplyStreamStart(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength){
-	if(sendOutSysex == nullptr) return;
-	uint8_t sysex[13];
+void midi2Processor::sendPEGet(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                               uint16_t headerLen, uint8_t* header){
+    sendPEHeaderOnly(group, srcMUID, destMuid, requestId, headerLen, header, (uint8_t) MIDICI_PE_GET);
+}
+
+void midi2Processor::sendPESubReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                                    uint16_t headerLen, uint8_t* header){
+    sendPEHeaderOnly(group, srcMUID, destMuid, requestId, headerLen, header, (uint8_t) MIDICI_PE_SUBREPLY);
+}
+
+void midi2Processor::sendPENotify(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                                  uint16_t headerLen, uint8_t* header){
+    sendPEHeaderOnly(group, srcMUID, destMuid, requestId, headerLen, header, (uint8_t) MIDICI_PE_NOTIFY);
+}
+
+void midi2Processor::sendPESetReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                                    uint16_t headerLen, uint8_t* header){
+    sendPEHeaderOnly(group, srcMUID, destMuid, requestId, headerLen, header, (uint8_t) MIDICI_PE_SETREPLY);
+}
+//*****
+void midi2Processor::sendPEGetReplyStreamStart(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                                               uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks,
+                                               uint16_t numberOfThisChunk, uint16_t bodyLength){
+    if(sendOutSysex == nullptr) return;
+    uint8_t sysex[13];
     MIDICI midiCiHeader;
     midiCiHeader.ciType = MIDICI_PE_GETREPLY;
     midiCiHeader.localMUID = srcMUID;
     midiCiHeader.remoteMUID = destMuid;
-	sendOutSysex(group,sysex,13,1);
-	
-	sysex[0] = requestId;
-	setBytesFromNumbers(sysex, headerLen, 1, 2);
-	sendOutSysex(group,sysex,3,2);		
-	sendOutSysex(group, header,headerLen,2);
-	
-	setBytesFromNumbers(sysex, numberOfChunks, 0, 2);
-	setBytesFromNumbers(sysex, numberOfThisChunk, 2, 2);
-	setBytesFromNumbers(sysex, bodyLength, 4, 2);
-	sendOutSysex(group,sysex,6,2);
+    sendOutSysex(group,sysex,13,1);
+
+    sysex[0] = requestId;
+    setBytesFromNumbers(sysex, headerLen, 1, 2);
+    sendOutSysex(group,sysex,3,2);
+    sendOutSysex(group, header,headerLen,2);
+
+    setBytesFromNumbers(sysex, numberOfChunks, 0, 2);
+    setBytesFromNumbers(sysex, numberOfThisChunk, 2, 2);
+    setBytesFromNumbers(sysex, bodyLength, 4, 2);
+    sendOutSysex(group,sysex,6,2);
 }
 
 void midi2Processor::sendPEGetReplyStreamContinue(uint8_t group, uint16_t partialLength, uint8_t* part, bool last ){
-	sendOutSysex(group,part,partialLength, last?3:2);
+    sendOutSysex(group,part,partialLength, last?3:2);
 }
 
-void midi2Processor::sendPESub(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength , uint8_t* body ){
-    if(sendOutSysex == nullptr) return;
-    uint8_t sysex[13];
-    MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PE_SUB;
-    midiCiHeader.localMUID = srcMUID;
-    midiCiHeader.remoteMUID = destMuid;
-    createCIHeader(sysex, midiCiHeader);
-    sendOutSysex(group,sysex,13,1);
-
-    sysex[0] = requestId;
-    setBytesFromNumbers(sysex, headerLen, 1, 2);
-    sendOutSysex(group,sysex,3,2);
-    sendOutSysex(group, header,headerLen,2);
-
-    setBytesFromNumbers(sysex, numberOfChunks, 0, 2);
-    setBytesFromNumbers(sysex, numberOfThisChunk, 2, 2);
-    setBytesFromNumbers(sysex, bodyLength, 4, 2);
-    sendOutSysex(group,sysex,6,2);
-
-    sendOutSysex(group,body,bodyLength,3);
-}
-
-void midi2Processor::sendPESubReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header){
-	if(sendOutSysex == nullptr) return;
-	uint8_t sysex[13];
-    MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PE_SUBREPLY;
-    midiCiHeader.localMUID = srcMUID;
-    midiCiHeader.remoteMUID = destMuid;
-    createCIHeader(sysex, midiCiHeader);
-	sendOutSysex(group,sysex,13,1);
-	
-	sysex[0] = requestId;
-	setBytesFromNumbers(sysex, headerLen, 1, 2);
-	sendOutSysex(group,sysex,3,2);
-    sendOutSysex(group, header,headerLen,2);
-
-    setBytesFromNumbers(sysex, 1, 0, 2);
-    setBytesFromNumbers(sysex, 1, 2, 2);
-    setBytesFromNumbers(sysex, 0, 4, 2);
-    sendOutSysex(group,sysex,6,3);
-}
-
-void midi2Processor::sendPENotify(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header){
-    if(sendOutSysex == nullptr) return;
-    uint8_t sysex[13];
-    MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PE_NOTIFY;
-    midiCiHeader.localMUID = srcMUID;
-    midiCiHeader.remoteMUID = destMuid;
-    createCIHeader(sysex, midiCiHeader);
-    sendOutSysex(group,sysex,13,1);
-
-    sysex[0] = requestId;
-    setBytesFromNumbers(sysex, headerLen, 1, 2);
-    sendOutSysex(group,sysex,3,2);
-    sendOutSysex(group, header,headerLen,2);
-
-    setBytesFromNumbers(sysex, 1, 0, 2);
-    setBytesFromNumbers(sysex, 1, 2, 2);
-    setBytesFromNumbers(sysex, 0, 4, 2);
-    sendOutSysex(group,sysex,6,3);
-}
-
-void midi2Processor::sendPESetReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId, uint16_t headerLen, uint8_t* header){
-	if(sendOutSysex == nullptr) return;
-	uint8_t sysex[13];
-    MIDICI midiCiHeader;
-    midiCiHeader.ciType = MIDICI_PE_SETREPLY;
-    midiCiHeader.localMUID = srcMUID;
-    midiCiHeader.remoteMUID = destMuid;
-    createCIHeader(sysex, midiCiHeader);
-	sendOutSysex(group,sysex,13,1);
-	
-	sysex[0] = requestId;
-	setBytesFromNumbers(sysex, headerLen, 1, 2);
-	sendOutSysex(group,sysex,3,2);
-    sendOutSysex(group, header,headerLen,2);
-
-    setBytesFromNumbers(sysex, 1, 0, 2);
-    setBytesFromNumbers(sysex, 1, 2, 2);
-    setBytesFromNumbers(sysex, 0, 4, 2);
-    sendOutSysex(group,sysex,6,3);
-}
-
+//******
 
 uint8_t midi2Processor::getPERequestId(uint8_t group, uint32_t muid, uint8_t requestId){
     uint8_t peRequestIdx = 255;

@@ -37,17 +37,28 @@ class midi2Processor{
     MIDICI midici[UMPGROUPS];
     umpSysex7Internal syExMessInt[UMPGROUPS];
 
-    void (*midiNoteOff)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData) = nullptr;
-    void (*midiNoteOn)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData) = nullptr;
+    void (*midiNoteOff)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType,
+            uint16_t attributeData) = nullptr;
+    void (*midiNoteOn)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType,
+            uint16_t attributeData) = nullptr;
     void (*controlChange)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value) = nullptr;
     void (*rpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, uint32_t value) = nullptr;
     void (*nrpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, uint32_t value) = nullptr;
     void (*rnrpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, int32_t value) = nullptr;
     void (*rrpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, int32_t value) = nullptr;
     void (*polyPressure)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure) = nullptr;
+
+    void (*perNotePB)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pitch) = nullptr;
+
+    void (*nrpnPerNote)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint8_t index, uint32_t value) = nullptr;
+    void (*rpnPerNote)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint8_t index, uint32_t value) = nullptr;
+
+    void (*perNoteManage)(uint8_t group, uint8_t channel, uint8_t noteNumber, bool detach, bool reset) = nullptr;
+
     void (*channelPressure)(uint8_t group, uint8_t channel, uint32_t pressure) = nullptr;
     void (*pitchBend)(uint8_t group, uint8_t channel, uint32_t value) = nullptr;
-    void (*programChange)(uint8_t group, uint8_t channel, uint8_t program, bool bankValid, uint8_t bank, uint8_t index) = nullptr;
+    void (*programChange)(uint8_t group, uint8_t channel, uint8_t program, bool bankValid, uint8_t bank,
+            uint8_t index) = nullptr;
     void (*sendOutSysex)(uint8_t group, uint8_t *sysex ,uint16_t length, uint8_t state) = nullptr;
     void (*timingCode)(uint8_t group, uint8_t timeCode) = nullptr;
     void (*songSelect)(uint8_t group, uint8_t song) = nullptr;
@@ -64,7 +75,8 @@ class midi2Processor{
     void (*recvDiscoveryRequest)(uint8_t group, MIDICI ciDetails,
             uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport,
             uint16_t maxSysex) = nullptr;
-    void (*recvDiscoveryReply)(uint8_t group, MIDICI ciDetails, uint8_t* manuId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex) = nullptr;
+    void (*recvDiscoveryReply)(uint8_t group, MIDICI ciDetails, uint8_t* manuId, uint8_t* famId, uint8_t* modelId,
+            uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex) = nullptr;
     void (*recvNAK)(uint8_t group, MIDICI ciDetails) = nullptr;
     void (*recvInvalidateMUID)(uint8_t group, MIDICI ciDetails, uint32_t terminateMuid) = nullptr;
     void (*recvUnknownMIDICI)(uint8_t group, umpSysex7Internal * syExMess, MIDICI ciDetails, uint8_t s7Byte) = nullptr;
@@ -110,17 +122,38 @@ class midi2Processor{
 	
 
 	//-----------------------Handlers ---------------------------
-	inline void setNoteOff(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData)){ midiNoteOff = fptr; }
-	inline void setNoteOn(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType, uint16_t attributeData)){ midiNoteOn = fptr; }
-	inline void setControlChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value)){ controlChange = fptr; }
-	inline void setRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){ rpn = fptr; }
-	inline void setNRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){ nrpn = fptr; }
-	inline void setRelativeNRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, int32_t value/*twoscomplement*/)){ rnrpn = fptr; }
-	inline void setRelativeRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, int32_t value/*twoscomplement*/)){ rrpn = fptr; }
-	inline void setPolyPressure(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure)){ polyPressure = fptr; }
-	inline void setChannelPressure(void (*fptr)(uint8_t group, uint8_t channel, uint32_t pressure)){ channelPressure = fptr; }
+	inline void setNoteOff(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity,
+            uint8_t attributeType, uint16_t attributeData)){ midiNoteOff = fptr; }
+	inline void setNoteOn(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity,
+            uint8_t attributeType, uint16_t attributeData)){ midiNoteOn = fptr; }
+	inline void setControlChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value)){
+        controlChange = fptr; }
+	inline void setRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){
+        rpn = fptr; }
+	inline void setNRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){
+        nrpn = fptr; }
+	inline void setRelativeNRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index,
+            int32_t value/*twoscomplement*/)){ rnrpn = fptr; }
+	inline void setRelativeRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index,
+            int32_t value/*twoscomplement*/)){ rrpn = fptr; }
+	inline void setPolyPressure(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure)){
+        polyPressure = fptr; }
+
+    inline void setRpnPerNote(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint8_t index,
+            uint32_t value)){rpnPerNote = fptr; }
+    inline void setNrpnPerNote(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint8_t index,
+            uint32_t value)){nrpnPerNote = fptr; }
+
+    inline void setPerNoteManage(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber,
+            bool detach, bool reset)){perNoteManage = fptr; }
+    inline void setPerNotePB(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber,
+                                              uint32_t value)){perNotePB = fptr; }
+
+	inline void setChannelPressure(void (*fptr)(uint8_t group, uint8_t channel, uint32_t pressure)){
+        channelPressure = fptr; }
 	inline void setPitchBend(void (*fptr)(uint8_t group, uint8_t channel, uint32_t value)){ pitchBend = fptr; }
-	inline void setProgramChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t program, bool bankValid, uint8_t bank, uint8_t index)){ programChange = fptr; }
+	inline void setProgramChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t program, bool bankValid,
+            uint8_t bank, uint8_t index)){ programChange = fptr; }
 	//TODO per note etc
 
 	inline void setTimingCode(void (*fptr)(uint8_t group, uint8_t timeCode)){ timingCode = fptr; }
@@ -135,13 +168,19 @@ class midi2Processor{
 	inline void setSystemReset(void (*fptr)(uint8_t group)){ systemReset = fptr; }
 	
 	inline void setCheckMUID(bool (*fptr)(uint8_t group, uint32_t muid)){ checkMUID = fptr; }
-	inline void setRawSysEx(void (*fptr)(uint8_t group, uint8_t *sysex ,uint16_t length, uint8_t state)){ sendOutSysex = fptr; }
-	inline void setRecvDiscovery(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* sysExId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex)){ recvDiscoveryRequest = fptr;}
-	inline void setRecvDiscoveryReply(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* sysExId, uint8_t* famId, uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex)){ recvDiscoveryReply = fptr;}
+	inline void setRawSysEx(void (*fptr)(uint8_t group, uint8_t *sysex ,uint16_t length, uint8_t state)){
+        sendOutSysex = fptr; }
+	inline void setRecvDiscovery(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* sysExId, uint8_t* famId,
+            uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex)){ recvDiscoveryRequest = fptr;}
+	inline void setRecvDiscoveryReply(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* sysExId, uint8_t* famId,
+            uint8_t* modelId, uint8_t *verId, uint8_t ciSupport, uint16_t maxSysex)){ recvDiscoveryReply = fptr;}
 	inline void setRecvNAK(void (*fptr)(uint8_t group, MIDICI ciDetails)){ recvNAK = fptr;}
-	inline void setRecvInvalidateMUID(void (*fptr)(uint8_t group, MIDICI ciDetails, uint32_t terminateMuid)){ recvInvalidateMUID = fptr;}
-	inline void setRecvUnknownMIDICI(void (*fptr)(uint8_t group, umpSysex7Internal * syExMess, MIDICI ciDetails, uint8_t s7Byte)){ recvUnknownMIDICI = fptr;}
-	inline void setRecvUnknownSysEx(void (*fptr)(uint8_t group, umpSysex7Internal * syExMess, uint8_t s7Byte)){ recvUnknownSysEx = fptr;}
+	inline void setRecvInvalidateMUID(void (*fptr)(uint8_t group, MIDICI ciDetails, uint32_t terminateMuid)){
+        recvInvalidateMUID = fptr;}
+	inline void setRecvUnknownMIDICI(void (*fptr)(uint8_t group, umpSysex7Internal * syExMess, MIDICI ciDetails,
+            uint8_t s7Byte)){ recvUnknownMIDICI = fptr;}
+	inline void setRecvUnknownSysEx(void (*fptr)(uint8_t group, umpSysex7Internal * syExMess, uint8_t s7Byte)){
+        recvUnknownSysEx = fptr;}
 
 	
 #ifndef M2_DISABLE_IDREQ
@@ -151,7 +190,8 @@ class midi2Processor{
   public:
 	void sendIdentityRequest (uint8_t group);
     inline void setHandleId(void (*fptr)(uint8_t group)){ recvIdRequest = fptr;}
-    inline void setHandleIdResponse(void (*fptr)(uint8_t group, uint8_t* sysexId, uint8_t* famId, uint8_t* modelId, uint8_t* ver)){ recvIdResponse = fptr;}
+    inline void setHandleIdResponse(void (*fptr)(uint8_t group, uint8_t* sysexId, uint8_t* famId, uint8_t* modelId,
+            uint8_t* ver)){ recvIdResponse = fptr;}
 #endif
 
 
@@ -186,10 +226,14 @@ class midi2Processor{
                          uint8_t authorityLevel);
 
 
-    inline void setRecvProtocolAvailable(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel, uint8_t* protocol)){ recvProtocolAvailable = fptr;}
-    inline void setRecvSetProtocol(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel, uint8_t* protocol)){ recvSetProtocol = fptr;}
-    inline void setRecvSetProtocolConfirm(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel)){ recvSetProtocolConfirm = fptr;}
-    inline void setRecvSetProtocolTest(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel, bool testDataAccurate)){ recvProtocolTest = fptr;}
+    inline void setRecvProtocolAvailable(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel,
+            uint8_t* protocol)){ recvProtocolAvailable = fptr;}
+    inline void setRecvSetProtocol(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel,
+            uint8_t* protocol)){ recvSetProtocol = fptr;}
+    inline void setRecvSetProtocolConfirm(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel)){
+        recvSetProtocolConfirm = fptr;}
+    inline void setRecvSetProtocolTest(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t authorityLevel,
+            bool testDataAccurate)){ recvProtocolTest = fptr;}
 
 #endif
 
@@ -200,15 +244,23 @@ class midi2Processor{
     void (*recvSetProfileDisabled)(uint8_t group, MIDICI ciDetails, uint8_t* profile) = nullptr;
     void (*recvSetProfileOn)(uint8_t group, MIDICI ciDetails, uint8_t* profile) = nullptr;
     void (*recvSetProfileOff)(uint8_t group, MIDICI ciDetails, uint8_t* profile) = nullptr;
-    void (*recvProfileDetails)(uint8_t group, MIDICI ciDetails, uint8_t* profile, uint16_t datalen, uint8_t*  data, uint16_t part, bool lastByteOfSet) = nullptr;
+    void (*recvProfileDetails)(uint8_t group, MIDICI ciDetails, uint8_t* profile, uint16_t datalen, uint8_t*  data,
+            uint16_t part, bool lastByteOfSet) = nullptr;
     void processProfileSysex(uint8_t group, uint8_t s7Byte);
+    void sendProfileMessage(uint8_t group, uint32_t srcMUID, uint32_t destMuid,  uint8_t destination, uint8_t* profile,
+                            uint8_t ciType);
   public:
 	inline void setRecvProfileInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails)){ recvProfileInquiry = fptr;}
-	inline void setRecvProfileEnabled(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){ recvSetProfileEnabled = fptr;}
-	inline void setRecvProfileDisabled(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){ recvSetProfileDisabled = fptr;}
-	inline void setRecvProfileOn(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){ recvSetProfileOn = fptr;}
-	inline void setRecvProfileOff(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){ recvSetProfileOff = fptr;}
-	inline void setRecvProfileDetails(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile, uint16_t datalen, uint8_t*  data, uint16_t part, bool lastByteOfSet)){ recvProfileDetails = fptr;}
+	inline void setRecvProfileEnabled(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){
+        recvSetProfileEnabled = fptr;}
+	inline void setRecvProfileDisabled(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){
+        recvSetProfileDisabled = fptr;}
+	inline void setRecvProfileOn(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){
+        recvSetProfileOn = fptr;}
+	inline void setRecvProfileOff(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile)){
+        recvSetProfileOff = fptr;}
+	inline void setRecvProfileDetails(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t* profile, uint16_t datalen,
+            uint8_t*  data, uint16_t part, bool lastByteOfSet)){ recvProfileDetails = fptr;}
 
 	void sendProfileListRequest(uint8_t group, uint32_t srcMUID, uint32_t destMuid,  uint8_t destination);
 	void sendProfileListResponse(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t destination,
@@ -239,13 +291,20 @@ class midi2Processor{
     void (*recvPESetReply)(uint8_t group, MIDICI ciDetails, peHeader requestDetails) = nullptr;
     void (*recvPESubReply)(uint8_t group, MIDICI ciDetails, peHeader requestDetails) = nullptr;
     void (*recvPENotify)(uint8_t group, MIDICI ciDetails, peHeader requestDetails) = nullptr;
-    void (*recvPESetInquiry)(uint8_t group, MIDICI ciDetails, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet) = nullptr;
-    void (*recvPESubInquiry)(uint8_t group, MIDICI ciDetails, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet) = nullptr;
+    void (*recvPESetInquiry)(uint8_t group, MIDICI ciDetails, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body,
+            bool lastByteOfSet) = nullptr;
+    void (*recvPESubInquiry)(uint8_t group, MIDICI ciDetails, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body,
+            bool lastByteOfSet) = nullptr;
     uint8_t getPERequestId(uint8_t group, uint32_t muid ,uint8_t s7Byte);
     void cleanupRequestId(uint8_t group, uint32_t muid, uint8_t requestId);
     void cleanupRequest(uint8_t reqpos);
     void processPEHeader(uint8_t group, uint8_t peRequestIdx, uint8_t s7Byte);
     void processPESysex(uint8_t group, uint8_t s7Byte);
+    void sendPEWithBody(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                         uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk,
+                         uint16_t bodyLength , uint8_t* body , uint8_t ciType);
+    void sendPEHeaderOnly(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
+                          uint16_t headerLen, uint8_t* header, uint8_t ciType);
   public:
 	void sendPECapabilityRequest(uint8_t group,uint32_t srcMUID, uint32_t destMuid,  uint8_t numSimulRequests);
 	void sendPECapabilityReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid,  uint8_t numSimulRequests);
@@ -265,7 +324,9 @@ class midi2Processor{
 	        uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk,
 			uint16_t bodyLength , uint8_t* body );
 
-    void sendPEGetReplyStreamStart(uint8_t group, uint32_t srcMUID, uint32_t destMuid,  uint8_t requestId, uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks, uint16_t numberOfThisChunk, uint16_t bodyLength);
+    void sendPEGetReplyStreamStart(uint8_t group, uint32_t srcMUID, uint32_t destMuid,  uint8_t requestId,
+                                   uint16_t headerLen, uint8_t* header, uint16_t numberOfChunks,
+                                   uint16_t numberOfThisChunk, uint16_t bodyLength);
     void sendPEGetReplyStreamContinue(uint8_t group, uint16_t partialLength, uint8_t* part, bool last );
 			
 	void sendPESubReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
@@ -275,14 +336,22 @@ class midi2Processor{
 	void sendPESetReply(uint8_t group, uint32_t srcMUID, uint32_t destMuid, uint8_t requestId,
 	        uint16_t headerLen, uint8_t* header);		
 			
-    inline void setPECapabilities(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t numSimulRequests)){ recvPECapabilities = fptr;}
-    inline void setPECapabilitiesReply(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t numSimulRequests)){ recvPECapabilitiesReplies = fptr;}
-    inline void setRecvPEGetInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){ recvPEGetInquiry = fptr;}
-    inline void setRecvPESetReply(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){ recvPESetReply = fptr;}
-    inline void setRecvPESubReply(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){ recvPESubReply = fptr;}
-    inline void setRecvPENotify(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){ recvPENotify = fptr;}
-    inline void setRecvPESetInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails, uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet)){ recvPESetInquiry = fptr;}
-    inline void setRecvPESubInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails, uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet)){ recvPESubInquiry = fptr;}
+    inline void setPECapabilities(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t numSimulRequests)){
+        recvPECapabilities = fptr;}
+    inline void setPECapabilitiesReply(void (*fptr)(uint8_t group, MIDICI ciDetails, uint8_t numSimulRequests)){
+        recvPECapabilitiesReplies = fptr;}
+    inline void setRecvPEGetInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){
+        recvPEGetInquiry = fptr;}
+    inline void setRecvPESetReply(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){
+        recvPESetReply = fptr;}
+    inline void setRecvPESubReply(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){
+        recvPESubReply = fptr;}
+    inline void setRecvPENotify(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){
+        recvPENotify = fptr;}
+    inline void setRecvPESetInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails,
+            uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet)){ recvPESetInquiry = fptr;}
+    inline void setRecvPESubInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails,
+            uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet)){ recvPESubInquiry = fptr;}
 #endif
 	
 };
