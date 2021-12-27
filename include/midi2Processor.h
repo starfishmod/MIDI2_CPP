@@ -292,9 +292,9 @@ class midi2Processor{
     void (*recvPESubReply)(uint8_t group, MIDICI ciDetails, peHeader requestDetails) = nullptr;
     void (*recvPENotify)(uint8_t group, MIDICI ciDetails, peHeader requestDetails) = nullptr;
     void (*recvPESetInquiry)(uint8_t group, MIDICI ciDetails, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body,
-            bool lastByteOfSet) = nullptr;
+                             bool lastByteOfChunk, bool lastByteOfSet) = nullptr;
     void (*recvPESubInquiry)(uint8_t group, MIDICI ciDetails, peHeader requestDetails, uint16_t bodyLen, uint8_t*  body,
-            bool lastByteOfSet) = nullptr;
+                             bool lastByteOfChunk, bool lastByteOfSet) = nullptr;
     uint8_t getPERequestId(uint8_t group, uint32_t muid ,uint8_t s7Byte);
     void cleanupRequestId(uint8_t group, uint32_t muid, uint8_t requestId);
     void cleanupRequest(uint8_t reqpos);
@@ -349,9 +349,9 @@ class midi2Processor{
     inline void setRecvPENotify(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails)){
         recvPENotify = fptr;}
     inline void setRecvPESetInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails,
-            uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet)){ recvPESetInquiry = fptr;}
+            uint16_t bodyLen, uint8_t*  body, bool lastByteOfChunk, bool lastByteOfSet)){ recvPESetInquiry = fptr;}
     inline void setRecvPESubInquiry(void (*fptr)(uint8_t group, MIDICI ciDetails,  peHeader requestDetails,
-            uint16_t bodyLen, uint8_t*  body, bool lastByteOfSet)){ recvPESubInquiry = fptr;}
+            uint16_t bodyLen, uint8_t*  body, bool lastByteOfChunk, bool lastByteOfSet)){ recvPESubInquiry = fptr;}
 #endif
 	
 };

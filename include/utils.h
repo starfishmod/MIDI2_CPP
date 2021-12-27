@@ -188,7 +188,7 @@ struct peHeader {
     int  status = -1;
     bool partial = false;
     int  totalChunks = -1;
-    int  numChunks = -1;
+    int  numChunk = -1;
     int  partialChunkCount = 1;
     int mutualEncoding = -1;
     char mediaType[PE_HEAD_BUFFERLEN]{};

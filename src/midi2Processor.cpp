@@ -646,7 +646,7 @@ void midi2Processor::processUMP(uint32_t UMP){
 
                 if(status == 8){
                     /*uint16_t numValidBytes  = umpMess[0] & 0xFFFF;
-                    uint16_t numChunks  = (umpMess[1] >> 16) & 0xFFFF;
+                    uint16_t numChunk  = (umpMess[1] >> 16) & 0xFFFF;
                     uint16_t numOfChunk  = umpMess[1] & 0xFFFF;
                     uint16_t manuId  = (umpMess[2] >> 16) & 0xFFFF;
                     uint16_t deviceId  = umpMess[2] & 0xFFFF;

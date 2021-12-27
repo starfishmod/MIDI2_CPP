@@ -27,7 +27,7 @@
 class mcoded7Decode{
 
 	private:
-		uint8_t dumpPos=0;
+		uint8_t dumpPos=255;
 
 		
 		uint8_t fBit=0;
@@ -44,15 +44,16 @@ class mcoded7Decode{
 
 		void reset(){
             memset(dump,0,7);
-			fBit=0; bits=0;dumpPos=0;
+			fBit=0; bits=0;dumpPos=255;
 		}
 		
 		void parseS7Byte(uint8_t s7Byte){		
-			if (dumpPos == 0) {
+			if (dumpPos == 255) {
 				reset();
 				bits = s7Byte;
+                dumpPos=0;
 			} else {
-				fBit = ((bits >> (7 - (dumpPos % 8))) & 1) << 7;
+				fBit = ((bits >> (6 - dumpPos)) & 1) << 7;
 				dump[dumpPos++] = s7Byte | fBit;
 			}
 		}
