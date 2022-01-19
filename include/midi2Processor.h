@@ -37,16 +37,16 @@ class midi2Processor{
     MIDICI midici[UMPGROUPS];
     umpSysex7Internal syExMessInt[UMPGROUPS];
 
-    void (*midiNoteOff)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType,
+    void (*midiNoteOff)(uint8_t group, uint8_t mt, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType,
             uint16_t attributeData) = nullptr;
-    void (*midiNoteOn)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType,
+    void (*midiNoteOn)(uint8_t group, uint8_t mt, uint8_t channel, uint8_t noteNumber, uint16_t velocity, uint8_t attributeType,
             uint16_t attributeData) = nullptr;
-    void (*controlChange)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value) = nullptr;
+    void (*controlChange)(uint8_t group, uint8_t mt, uint8_t channel, uint8_t index, uint32_t value) = nullptr;
     void (*rpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, uint32_t value) = nullptr;
     void (*nrpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, uint32_t value) = nullptr;
     void (*rnrpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, int32_t value) = nullptr;
     void (*rrpn)(uint8_t group, uint8_t channel, uint8_t bank, uint8_t index, int32_t value) = nullptr;
-    void (*polyPressure)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure) = nullptr;
+    void (*polyPressure)(uint8_t group, uint8_t mt, uint8_t channel, uint8_t noteNumber, uint32_t pressure) = nullptr;
 
     void (*perNotePB)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pitch) = nullptr;
 
@@ -55,10 +55,11 @@ class midi2Processor{
 
     void (*perNoteManage)(uint8_t group, uint8_t channel, uint8_t noteNumber, bool detach, bool reset) = nullptr;
 
-    void (*channelPressure)(uint8_t group, uint8_t channel, uint32_t pressure) = nullptr;
-    void (*pitchBend)(uint8_t group, uint8_t channel, uint32_t value) = nullptr;
-    void (*programChange)(uint8_t group, uint8_t channel, uint8_t program, bool bankValid, uint8_t bank,
+    void (*channelPressure)(uint8_t group, uint8_t mt, uint8_t channel, uint32_t pressure) = nullptr;
+    void (*pitchBend)(uint8_t group, uint8_t mt, uint8_t channel, uint32_t value) = nullptr;
+    void (*programChange)(uint8_t group, uint8_t mt, uint8_t channel, uint8_t program, bool bankValid, uint8_t bank,
             uint8_t index) = nullptr;
+
     void (*sendOutSysex)(uint8_t group, uint8_t *sysex ,uint16_t length, uint8_t state) = nullptr;
     void (*timingCode)(uint8_t group, uint8_t timeCode) = nullptr;
     void (*songSelect)(uint8_t group, uint8_t song) = nullptr;
@@ -122,21 +123,21 @@ class midi2Processor{
 	
 
 	//-----------------------Handlers ---------------------------
-	inline void setNoteOff(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity,
+	inline void setNoteOff(void (*fptr)(uint8_t group, uint8_t mt ,uint8_t channel, uint8_t noteNumber, uint16_t velocity,
             uint8_t attributeType, uint16_t attributeData)){ midiNoteOff = fptr; }
-	inline void setNoteOn(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint16_t velocity,
+	inline void setNoteOn(void (*fptr)(uint8_t group, uint8_t mt ,uint8_t channel, uint8_t noteNumber, uint16_t velocity,
             uint8_t attributeType, uint16_t attributeData)){ midiNoteOn = fptr; }
-	inline void setControlChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t index, uint32_t value)){
+	inline void setControlChange(void (*fptr)(uint8_t group, uint8_t mt, uint8_t channel, uint8_t index, uint32_t value)){
         controlChange = fptr; }
-	inline void setRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){
+	inline void setRPN(void (*fptr)(uint8_t group, uint8_t channel, uint8_t bank,  uint8_t index, uint32_t value)){
         rpn = fptr; }
-	inline void setNRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index, uint32_t value)){
+	inline void setNRPN(void (*fptr)(uint8_t group, uint8_t channel, uint8_t bank,  uint8_t index, uint32_t value)){
         nrpn = fptr; }
-	inline void setRelativeNRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index,
+	inline void setRelativeNRPN(void (*fptr)(uint8_t group, uint8_t channel,  uint8_t bank,  uint8_t index,
             int32_t value/*twoscomplement*/)){ rnrpn = fptr; }
-	inline void setRelativeRPN(void (*fptr)(uint8_t group, uint8_t channel,uint8_t bank,  uint8_t index,
+	inline void setRelativeRPN(void (*fptr)(uint8_t group, uint8_t channel, uint8_t bank,  uint8_t index,
             int32_t value/*twoscomplement*/)){ rrpn = fptr; }
-	inline void setPolyPressure(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint32_t pressure)){
+	inline void setPolyPressure(void (*fptr)(uint8_t group, uint8_t mt, uint8_t channel, uint8_t noteNumber, uint32_t pressure)){
         polyPressure = fptr; }
 
     inline void setRpnPerNote(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber, uint8_t index,
@@ -149,12 +150,12 @@ class midi2Processor{
     inline void setPerNotePB(void (*fptr)(uint8_t group, uint8_t channel, uint8_t noteNumber,
                                               uint32_t value)){perNotePB = fptr; }
 
-	inline void setChannelPressure(void (*fptr)(uint8_t group, uint8_t channel, uint32_t pressure)){
+	inline void setChannelPressure(void (*fptr)(uint8_t group, uint8_t mt, uint8_t channel, uint32_t pressure)){
         channelPressure = fptr; }
-	inline void setPitchBend(void (*fptr)(uint8_t group, uint8_t channel, uint32_t value)){ pitchBend = fptr; }
-	inline void setProgramChange(void (*fptr)(uint8_t group, uint8_t channel, uint8_t program, bool bankValid,
+	inline void setPitchBend(void (*fptr)(uint8_t group, uint8_t mt, uint8_t channel, uint32_t value)){ pitchBend = fptr; }
+	inline void setProgramChange(void (*fptr)(uint8_t group, uint8_t mt, uint8_t channel, uint8_t program, bool bankValid,
             uint8_t bank, uint8_t index)){ programChange = fptr; }
-	//TODO per note etc
+
 
 	inline void setTimingCode(void (*fptr)(uint8_t group, uint8_t timeCode)){ timingCode = fptr; }
 	inline void setSongSelect(void (*fptr)(uint8_t group,uint8_t song)){ songSelect = fptr; }

@@ -6,7 +6,7 @@
 #include <cstring>
 
 void midi2Processor::processPESysex(uint8_t group, uint8_t s7Byte){
-	uint8_t peRequestIdx;
+	uint8_t peRequestIdx = 0;
 	
 	if(midici[group].ciType == MIDICI_PE_CAPABILITY && syExMessInt[group].pos == 13){
 		if(recvPECapabilities != nullptr)recvPECapabilities(group,midici[group], s7Byte);
@@ -16,9 +16,12 @@ void midi2Processor::processPESysex(uint8_t group, uint8_t s7Byte){
 	} else {
         if(syExMessInt[group].pos == 13){
             syExMessInt[group].peRequestIdx = getPERequestId(group, midici[group].remoteMUID, s7Byte);
-            peRquestDetails[peRequestIdx].totalChunks = 0;
-            peRquestDetails[peRequestIdx].numChunk = 0;
-            peRquestDetails[peRequestIdx].partialChunkCount = 1;
+            if(syExMessInt[group].peRequestIdx!=255){
+                peRquestDetails[syExMessInt[group].peRequestIdx].totalChunks = 0;
+                peRquestDetails[syExMessInt[group].peRequestIdx].numChunk = 0;
+                peRquestDetails[syExMessInt[group].peRequestIdx].partialChunkCount = 1;
+            }
+
             return;
         }
 
@@ -85,7 +88,7 @@ void midi2Processor::processPESysex(uint8_t group, uint8_t s7Byte){
 
 		uint16_t bodyLength = syExMessInt[group].intbuffer1[1];
         uint16_t initPos = 22 + headerLength;
-        uint8_t charOffset = (syExMessInt[group].pos - initPos) % S7_BUFFERLEN;
+        uint16_t charOffset = (syExMessInt[group].pos - initPos) % S7_BUFFERLEN;
 
 		if(
 			(syExMessInt[group].pos >= initPos && syExMessInt[group].pos <= initPos - 1 + bodyLength)
@@ -201,7 +204,7 @@ void midi2Processor::processPEHeader(uint8_t group, uint8_t peRequestIdx, uint8_
 				}
 				if(!strcmp((const char*)syExMessInt[group].buffer1,"notify")){
 					peRquestDetails[peRequestIdx].command = MIDICI_PE_COMMAND_NOTIFY;
-				};
+				}
                 peRquestDetails[peRequestIdx]._headerProp=0;
                 peRquestDetails[peRequestIdx]._pvoid = nullptr;
 			}
@@ -246,7 +249,7 @@ void midi2Processor::processPEHeader(uint8_t group, uint8_t peRequestIdx, uint8_
         else if(peRquestDetails[peRequestIdx]._headerPos +1 < PE_HEAD_BUFFERLEN){
 			syExMessInt[group].buffer1[peRquestDetails[peRequestIdx]._headerPos++] = s7Byte;
         }
-	} else if((peRquestDetails[peRequestIdx]._headerState & 0xF) == PE_HEAD_STATE_IN_NUMBER) {;
+	} else if((peRquestDetails[peRequestIdx]._headerState & 0xF) == PE_HEAD_STATE_IN_NUMBER) {
 		if ((s7Byte >= '0' && s7Byte <= '9') ) {
 			int *n = (int *)peRquestDetails[peRequestIdx]._pvoid;
 			*n =  *n * 10 + (s7Byte - '0');

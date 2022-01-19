@@ -482,25 +482,25 @@ void midi2Processor::processUMP(uint32_t UMP){
 
 			switch(status){
 				case NOTE_OFF: //Note Off
-					if(midiNoteOff != nullptr) midiNoteOff(group, channel, val1, scaleUp(val2,7,16), 0, 0);
+					if(midiNoteOff != nullptr) midiNoteOff(group, (uint8_t)UMP_M1CVM, channel, val1, scaleUp(val2,7,16), 0, 0);
 					break;
 				case NOTE_ON: //Note On
-					if(midiNoteOn != nullptr) midiNoteOn(group, channel, val1, scaleUp(val2,7,16), 0, 0);
+					if(midiNoteOn != nullptr) midiNoteOn(group, (uint8_t)UMP_M1CVM, channel, val1, scaleUp(val2,7,16), 0, 0);
 					break;
 				case KEY_PRESSURE: //Poly Pressure
-					if(polyPressure != nullptr) polyPressure(group, channel, val1, scaleUp(val2,7,32));
+					if(polyPressure != nullptr) polyPressure(group, (uint8_t)UMP_M1CVM, channel, val1, scaleUp(val2,7,32));
 					break;	
 				case CC: //CC
-					if(controlChange != nullptr) controlChange(group, channel, val1, scaleUp(val2,7,32));
+					if(controlChange != nullptr) controlChange(group, (uint8_t)UMP_M1CVM, channel, val1, scaleUp(val2,7,32));
 					break;
 				case PROGRAM_CHANGE: //Program Change Message
-					if(programChange != nullptr) programChange(group, channel, val1, false, 0, 0);
+					if(programChange != nullptr) programChange(group, (uint8_t)UMP_M1CVM, channel, val1, false, 0, 0);
 					break;
 				case CHANNEL_PRESSURE: //Channel Pressure
-					if(channelPressure != nullptr) channelPressure(group, channel, scaleUp(val1,7,32));
+					if(channelPressure != nullptr) channelPressure(group, (uint8_t)UMP_M1CVM, channel, scaleUp(val1,7,32));
 					break;
 				case PITCH_BEND: //PitchBend
-					if(pitchBend != nullptr) pitchBend(group, channel, scaleUp((val2 << 7) + val1,14,32));
+					if(pitchBend != nullptr) pitchBend(group, (uint8_t)UMP_M1CVM, channel, scaleUp((val2 << 7) + val1,14,32));
 					break;		
 			}				
 		}
@@ -538,19 +538,19 @@ void midi2Processor::processUMP(uint32_t UMP){
 			
 			switch(status){
 				case NOTE_OFF: //Note Off
-					if(midiNoteOff != nullptr) midiNoteOff(group, channel, val1, umpMess[1] >> 16, val2, umpMess[1] & 65535);
+					if(midiNoteOff != nullptr) midiNoteOff(group, (uint8_t)UMP_M2CVM, channel, val1, umpMess[1] >> 16, val2, umpMess[1] & 65535);
 					break;
 				
 				case NOTE_ON: //Note On
-					if(midiNoteOn != nullptr) midiNoteOn(group, channel, val1, umpMess[1] >> 16, val2, umpMess[1] & 65535);
+					if(midiNoteOn != nullptr) midiNoteOn(group, (uint8_t)UMP_M2CVM, channel, val1, umpMess[1] >> 16, val2, umpMess[1] & 65535);
 					break;
 					
 				case KEY_PRESSURE: //Poly Pressure
-					if(polyPressure != nullptr) polyPressure(group, channel, val1, umpMess[1]);
+					if(polyPressure != nullptr) polyPressure(group, (uint8_t)UMP_M2CVM, channel, val1, umpMess[1]);
 					break;	
 				
 				case CC: //CC
-					if(controlChange != nullptr) controlChange(group, channel, val1, umpMess[1]);
+					if(controlChange != nullptr) controlChange(group, (uint8_t)UMP_M2CVM, channel, val1, umpMess[1]);
 					break;	
 				
 				case RPN: //RPN
@@ -570,15 +570,15 @@ void midi2Processor::processUMP(uint32_t UMP){
 					break;
 				
 				case PROGRAM_CHANGE: //Program Change Message
-					if(programChange != nullptr) programChange(group, channel, umpMess[1] >> 24, umpMess[0] & 1 , (umpMess[1] >> 8) & 0x7f , umpMess[1] & 0x7f);
+					if(programChange != nullptr) programChange(group, (uint8_t)UMP_M2CVM, channel, umpMess[1] >> 24, umpMess[0] & 1 , (umpMess[1] >> 8) & 0x7f , umpMess[1] & 0x7f);
 					break;
 
 				case CHANNEL_PRESSURE: //Channel Pressure
-					if(channelPressure != nullptr) channelPressure(group, channel, umpMess[1]);
+					if(channelPressure != nullptr) channelPressure(group, (uint8_t)UMP_M2CVM, channel, umpMess[1]);
 					break;
 
 				case PITCH_BEND: //PitchBend
-					if(pitchBend != nullptr) pitchBend(group, channel, umpMess[1]);
+					if(pitchBend != nullptr) pitchBend(group, (uint8_t)UMP_M2CVM, channel, umpMess[1]);
 					break;	
 					
 				case PITCH_BEND_PERNOTE: //Per Note PitchBend 6
@@ -587,7 +587,7 @@ void midi2Processor::processUMP(uint32_t UMP){
 
 				case NRPN_PERNOTE: //Assignable Per-Note Controller 1
                     if(nrpnPerNote != nullptr) nrpnPerNote(group, channel, val1, val2, umpMess[1]);
-					break;	
+					break;
 					
 				case RPN_PERNOTE: //Registered Per-Note Controller 0
                     if(rpnPerNote != nullptr) rpnPerNote(group, channel, val1, val2, umpMess[1]);
