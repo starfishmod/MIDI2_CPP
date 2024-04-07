@@ -21,7 +21,7 @@ then please submit PR's and/or issues - but PR's preferred.
 Please note that use of this library is at your own risk!
 
 ## What does this do?
-Please read the MIDI 2.0 specification on https://midi.org/specifications to understand the following.
+Please read the MIDI 2.0 specification on [https://midi.org/specifications](https://midi.org/specs) to understand the following.
 
 This library can:
 * Convert MIDI 1.0 Byte stream to UMP
