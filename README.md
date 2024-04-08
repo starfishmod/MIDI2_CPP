@@ -1,3 +1,5 @@
+# THIS Library is now replaced by [https://github.com/midi2-dev/](https://github.com/midi2-dev/AM_MIDI2.0Lib)
+
 # MIDI2.0 C++
 A MIDI 2.0 Library for Embedded/Arduino Devices
 
